@@ -253,6 +253,10 @@ def generate_professional_resume(user_input: str, job_description: str):
 # ==========================================
 # 5. FASTAPI ENDPOINT  (same URL as before — frontend connection intact)
 # ==========================================
+@app.get("/")
+async def root():
+    return {"status": "healthy", "message": "AI Resume Builder Backend is running!"}
+
 @app.post("/api/generate-resume")
 async def build_resume_endpoint(data: ResumeRequest):
     if not data.profile or not data.jd:
