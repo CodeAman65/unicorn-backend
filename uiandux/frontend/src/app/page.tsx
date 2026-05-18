@@ -739,7 +739,7 @@ export default function AIResumeArchitect() {
     }
     setAppState("loading");
     try {
-      const response = await fetch("https://unicorn-backend-2.onrender.com", {
+      const response = await fetch("https://unicorn-backend-2.onrender.com/api/generate-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile: profileData, jd: jobDescription }),
