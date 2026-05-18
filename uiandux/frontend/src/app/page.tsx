@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-// @ts-ignore
-import html2pdf from "html2pdf.js";
-import { Document, Packer, Paragraph, HeadingLevel } from "docx";
+
 // ==========================================
 // TYPES & INTERFACES
 // ==========================================
@@ -199,66 +197,7 @@ export default function AIResumeArchitect() {
       setAppState("idle");
     }
   };
-  const downloadPDF = () => {
-    const element = document.getElementById("resume-content-area");
-    if (!element) return;
 
-    const opt: any = {
-      margin:       [10, 10, 10, 10],
-      filename:     `${currentResume.name ? currentResume.name.replace(/\s+/g, '_') : 'Resume'}_Resume.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    // @ts-ignore
-    html2pdf().set(opt).from(element).save();
-  };
-
-  // 🟢 FEATURE 2: WORD (DOCX) EXPORT FUNCTION
-  const downloadWord = () => {
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: [
-          new Paragraph({ text: currentResume.name, heading: HeadingLevel.HEADING_1 }),
-          new Paragraph({ text: currentResume.contact, spacing: { after: 200 } }),
-          
-          new Paragraph({ text: "PROFESSIONAL SUMMARY", heading: HeadingLevel.HEADING_2, spacing: { before: 200 } }),
-          new Paragraph({ text: currentResume.summary, spacing: { after: 200 } }),
-          
-          new Paragraph({ text: "EXPERIENCE", heading: HeadingLevel.HEADING_2 }),
-          ...currentResume.experience.flatMap(exp => [
-            new Paragraph({ text: `${exp.role}   (${exp.duration})`, heading: HeadingLevel.HEADING_3 }),
-            ...exp.points.map(pt => new Paragraph({ text: `• ${pt}`, indent: { left: 360 } }))
-          ]),
-
-          new Paragraph({ text: "PROJECTS", heading: HeadingLevel.HEADING_2, spacing: { before: 200 } }),
-          ...(currentResume.projects || []).flatMap(proj => [
-            new Paragraph({ text: proj.name, heading: HeadingLevel.HEADING_3 }),
-            ...proj.points.map(pt => new Paragraph({ text: `• ${pt}`, indent: { left: 360 } }))
-          ]),
-
-          new Paragraph({ text: "SKILLS", heading: HeadingLevel.HEADING_2, spacing: { before: 200 } }),
-          ...currentResume.skills.map(skill => new Paragraph({ text: skill })),
-
-          new Paragraph({ text: "EDUCATION", heading: HeadingLevel.HEADING_2, spacing: { before: 200 } }),
-          ...(currentResume.education || []).map(edu => 
-            new Paragraph({ text: `${edu.degree} - ${edu.institution} (${edu.year})` })
-          )
-        ],
-      }],
-    });
-
-    Packer.toBlob(doc).then(blob => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${currentResume.name.replace(/\s+/g, '_')}_Resume.docx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    });
-  };
   useEffect(() => {
     setParticles(
       Array.from({ length: 28 }, (_, i) => ({
@@ -383,48 +322,17 @@ export default function AIResumeArchitect() {
                 <span>Estimated Token Usage: <strong style={{ color: "#10b981" }}>{tokensUsed} tokens</strong></span>
               </div>
             )}
-          </div> {/* end LEFT PANEL */}
+          </div>
 
           {/* RIGHT PANEL (PREVIEW) */}
           <div style={{ background: "rgba(10,7,24,0.45)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "24px", backdropFilter: "blur(24px)", padding: "26px", display: "flex", flexDirection: "column", height: "100%", position: "relative", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div style={{ width: "30px", height: "30px", borderRadius: "8px", background: "rgba(147,51,234,0.1)", border: "1px solid rgba(147,51,234,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg style={{ width: "16px", height: "16px", color: "#a78bfa" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>Final Optimized Resume</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+              <div style={{ width: "30px", height: "30px", borderRadius: "8px", background: "rgba(147,51,234,0.1)", border: "1px solid rgba(147,51,234,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg style={{ width: "16px", height: "16px", color: "#a78bfa" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               </div>
+              <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>Final Optimized Resume</h2>
+            </div>
 
-              {/* Action Buttons: Fixed downloadWord casing */}
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button 
-                  onClick={downloadPDF} 
-                  style={{ background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.3)", color: "#a78bfa", padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}
-                >
-                  📄 PDF
-                </button>
-                <button 
-                  onClick={downloadWord} 
-                  style={{ background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.3)", color: "#22d3ee", padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}
-                >
-                  📝 Word
-                </button>
-              </div>
-            </div>
-              {/* Action Buttons: Only visible when resume generation is done */}
-              {appState === "done" && (
-                <div style={{ display: "flex", gap: "10px", animation: "fadeInUp 0.3s ease both" }}>
-                  <button onClick={downloadPDF} style={{ background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.3)", color: "#c084fc", fontSize: "12px", fontWeight: 600, padding: "6px 14px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }} onMouseEnter={(e)=>e.currentTarget.style.background="rgba(167,139,250,0.25)"} onMouseLeave={(e)=>e.currentTarget.style.background="rgba(167,139,250,0.15)"}>
-                    📥 PDF
-                  </button>
-                  <button onClick={downloadWord} style={{ background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.3)", color: "#22d3ee", fontSize: "12px", fontWeight: 600, padding: "6px 14px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }} onMouseEnter={(e)=>e.currentTarget.style.background="rgba(6,182,212,0.25)"} onMouseLeave={(e)=>e.currentTarget.style.background="rgba(6,182,212,0.15)"}>
-                    📝 Word
-                  </button>
-                </div>
-              )}
-            </div>
             <div style={{ flex: 1, position: "relative" }}>
 
               {/* LOADING SKELETON */}
@@ -453,9 +361,7 @@ export default function AIResumeArchitect() {
                 </div>
               ) : (
                 /* RESUME PREVIEW — idle shows placeholder, done shows real data */
-                <div 
-                  id="resume-content-area"
-                  className="custom-scroll" style={{
+                <div className="custom-scroll" style={{
                   background: "#ffffff", borderRadius: "14px", padding: "40px 45px",
                   color: "#1e293b", width: "100%", maxWidth: "794px",
                   marginLeft: "auto", marginRight: "auto",
@@ -583,8 +489,8 @@ export default function AIResumeArchitect() {
               )}
             </div>
           </div>
-        </main> {/* end WORKSPACE */}
-      </div> {/* end VIEWPORT LAYER */}
+        </main>
+      </div>
     </>
   );
 }
