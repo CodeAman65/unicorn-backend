@@ -165,6 +165,7 @@ export default function AIResumeArchitect() {
   const [profileData, setProfileData] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [resumeData, setResumeData] = useState<ResumeData | null>(null);
+  const [tokensUsed, setTokensUsed] = useState<number | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
@@ -184,6 +185,10 @@ export default function AIResumeArchitect() {
       });
       if (!response.ok) throw new Error("Backend server error!");
       const result = await response.json();
+      const inputChars = profileData.length + jobDescription.length;
+      const outputChars = JSON.stringify(result).length;
+      const roughTokens = Math.ceil((inputChars + outputChars) / 4);
+      setTokensUsed(roughTokens);
       setResumeData(result);
       setAppState("done");
     } catch (error) {
@@ -307,6 +312,16 @@ export default function AIResumeArchitect() {
                 )}
               </span>
             </button>
+            {/* 🟢 TOKEN COUNTER UI YAHAN PASTE KARO */}
+            {tokensUsed !== null && appState === "done" && (
+              <div style={{ marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: "12px", color: "#a1a1aa", background: "rgba(10,7,24,0.6)", border: "1px solid rgba(16,185,129,0.2)", padding: "8px 16px", borderRadius: "99px", width: "max-content", margin: "16px auto 0" }}>
+                <span style={{ display: "flex", position: "relative", width: "8px", height: "8px" }}>
+                  <span style={{ animation: "pulseBadge 2s infinite", position: "absolute", width: "100%", height: "100%", borderRadius: "50%", background: "#10b981", opacity: 0.7 }}></span>
+                  <span style={{ position: "relative", width: "8px", height: "8px", borderRadius: "50%", background: "#10b981" }}></span>
+                </span>
+                <span>Estimated Token Usage: <strong style={{ color: "#10b981" }}>{tokensUsed} tokens</strong></span>
+              </div>
+            )}
           </div>
 
           {/* RIGHT PANEL (PREVIEW) */}
