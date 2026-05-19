@@ -275,7 +275,75 @@ async def build_resume_endpoint(data: ResumeRequest):
             status_code=500,
             detail=f"AI generation pipeline failed: {str(e)}"
         )
+# ==========================================
+# 6. TARGET 3: EDIT RESUME ENDPOINT (Naya Add Karo)
+# ==========================================
 
+# 1. Edit request ke liye validation schema
+class EditResumeRequest(BaseModel):
+    currentResume: ResumeSchema  # Tumhara purana schema yahan use kar rhe hain taaki data safe rahe
+    instruction: str
+
+@app.post("/api/edit-resume")
+async def edit_resume_endpoint(data: EditResumeRequest):
+    if not data.instruction:
+        raise HTTPException(
+            status_code=400, 
+            detail="Bhai, kuch instruction toh likho ki kya edit karna hai!"
+        )
+
+    try:
+        # Gemini ko instruction dene ke liye prompt taiyar karo
+        system_instruction = (
+            "You are an expert resume editor. You will receive a candidate's current resume in structured JSON format "
+            "along with a specific user instruction detailing changes, rewrites, or additions to make. "
+            "Your job is to apply those edits meticulously across the relevant fields (summary, experience, skills, etc.) "
+            "while maintaining the strict ATS-optimized high-impact style (action verbs, quantified metrics if applicable). "
+            "\n\nCRITICAL: You must return ONLY the updated JSON structure that perfectly maps to the original input schema. "
+            "Do not include any chat formatting, markdown blocks (like ```json), introduction, or conversational filler."
+        )
+
+        # JSON data aur instruction ko string mein bundle karo
+        import json
+        user_content = (
+            f"Current Resume Data (JSON):\n{json.dumps(data.currentResume.model_dump())}\n\n"
+            f"User Edit Instruction: {data.instruction}"
+        )
+
+        # CrewAI ke standard LLM call ki tarah, hum direct model initialize kar rahe hain bina extra package ke
+        from google.generativeai import GenerativeModel
+        import google.generativeai as genai
+        
+        # API key configure karo (Jo upar api_key_str mein defined hai)
+        genai.configure(api_key=api_key_str)
+
+        model = GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction=system_instruction
+        )
+        
+        response = model.generate_content(user_content)
+        cleaned_response = response.text.strip()
+        
+        # Agar Gemini markdown backticks ```json lagaye toh use safely remove karo
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response.strip("```").strip("json").strip()
+
+        # Modified text ko dictionary mein convert karke frontend ko return karo
+        updated_resume_dict = json.loads(cleaned_response)
+        return updated_resume_dict
+
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=500, 
+            detail="AI ne invalid JSON bana diya, please instruction thoda clear likh kar firse try karein."
+        )
+    except Exception as e:
+        print(f"Edit Server Error: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Resume edit pipeline failed: {str(e)}"
+        )
 
 if __name__ == "__main__":
     print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")
