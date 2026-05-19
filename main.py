@@ -25,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-api_key_str = "AIzaSyDXWis99jri3kufMu5pY-JUbjPtDj5cXtw"  # <-- Apni key yahan rakho
+api_key_str = "AIzaSyDJWXlNnUBEq-JHnt6SHB2DH8TiTd7mZ_k"  # <-- Apni key yahan rakho
 os.environ["GEMINI_API_KEY"] = api_key_str
 os.environ["GOOGLE_API_KEY"] = api_key_str
 
