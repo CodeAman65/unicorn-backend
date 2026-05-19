@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 // @ts-ignore
-import html2pdf from "html2pdf.js";
+// import html2pdf from "html2pdf.js";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 
 // ==========================================
@@ -201,9 +201,10 @@ export default function AIResumeArchitect() {
     }
   };
   // 🟢 FEATURE 2: PDF EXPORT FUNCTION (100% Type-Safe)
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     const element = document.getElementById("resume-content-area");
     if (!element) return;
+    const html2pdf = (await import("html2pdf.js")).default;
 
     // Optional chaining added to prevent crash if currentResume is empty initially
     const fileName = currentResume?.name ? `${currentResume.name.replace(/\s+/g, '_')}_Resume.pdf` : 'Resume.pdf';
