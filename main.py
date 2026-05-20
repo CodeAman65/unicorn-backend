@@ -30,7 +30,7 @@ os.environ["GEMINI_API_KEY"] = api_key_str
 os.environ["GOOGLE_API_KEY"] = api_key_str
 
 gemini_llm = LLM(
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     api_key=api_key_str
 )
 
@@ -318,7 +318,7 @@ async def edit_resume_endpoint(data: EditResumeRequest):
         genai.configure(api_key=api_key_str)
 
         model = GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name="gemini-2.5-flash",
             system_instruction=system_instruction
         )
         
@@ -416,7 +416,7 @@ Interview style: Professional but conversational. Make the candidate feel comfor
             )
 
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=chat_history,
             config=genai_client.types.GenerateContentConfig(
                 system_instruction=system_prompt,
