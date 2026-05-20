@@ -4,7 +4,7 @@ import os
 import warnings
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
-
+from google import genai as genai_client
 from crewai import Agent, Task, Crew, Process, LLM
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,12 +25,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-api_key_str = "AIzaSyAdMvZm9E6bnMO8jahD6uakLsZwrt1uqMA"  # <-- Apni key yahan rakho
+api_key_str = "AIzaSyC4Rjiu1xGmyyyiHh0v9m_1zT32B_plcU8"  # <-- Apni key yahan rakho
 os.environ["GEMINI_API_KEY"] = api_key_str
 os.environ["GOOGLE_API_KEY"] = api_key_str
 
 gemini_llm = LLM(
-    model="gemini/gemini-2.5-flash",
+    model="gemini-1.5-flash",
     api_key=api_key_str
 )
 
@@ -318,7 +318,7 @@ async def edit_resume_endpoint(data: EditResumeRequest):
         genai.configure(api_key=api_key_str)
 
         model = GenerativeModel(
-            model_name="gemini-2.5-flash",
+            model_name="gemini-1.5-flash",
             system_instruction=system_instruction
         )
         
@@ -344,6 +344,91 @@ async def edit_resume_endpoint(data: EditResumeRequest):
             status_code=500, 
             detail=f"Resume edit pipeline failed: {str(e)}"
         )
+    
+# ==========================================
+# INTERVIEW ENDPOINT
+# ==========================================
+class Message(BaseModel):
+    role: str   # "user" ya "assistant"
+    content: str
+
+class InterviewRequest(BaseModel):
+    resume_data: dict        # Generated resume JSON
+    job_role: str            # Job role — auto ya manual
+    conversation: list[Message]  # Poori chat history
+
+@app.post("/api/interview")
+async def interview_endpoint(data: InterviewRequest):
+    if not data.job_role:
+        raise HTTPException(status_code=400, detail="Job role required!")
+
+    try:
+        # Resume context banao
+        resume_context = ""
+        if data.resume_data:
+            resume_context = f"""
+Candidate Resume:
+- Name: {data.resume_data.get('name', 'Candidate')}
+- Summary: {data.resume_data.get('summary', '')}
+- Skills: {', '.join(data.resume_data.get('skills', []))}
+- Experience: {str(data.resume_data.get('experience', []))}
+- Projects: {str(data.resume_data.get('projects', []))}
+"""
+
+        # System prompt — interviewer personality
+        system_prompt = f"""You are an expert technical interviewer conducting a mock interview for the role of: {data.job_role}.
+
+{resume_context}
+
+Your rules:
+1. Ask ONE question at a time — never multiple questions together
+2. Follow the STAR method (Situation, Task, Action, Result) for behavioral questions
+3. Ask intelligent follow-up questions based on the candidate's PREVIOUS answer
+4. Mix technical questions with behavioral ones naturally
+5. If the answer is vague, probe deeper — "Can you elaborate on that?" or "What was the specific outcome?"
+6. After every 4-5 questions, give brief encouraging feedback
+7. Start the interview with a warm welcome and first question
+8. Keep responses concise — you are an interviewer, not a teacher
+9. Use the candidate's resume details to ask specific questions about their projects and experience
+10. Never break character — always stay as the interviewer
+
+Interview style: Professional but conversational. Make the candidate feel comfortable."""
+
+        # Conversation history format karo
+        messages = []
+        for msg in data.conversation:
+            messages.append({
+                "role": msg.role,
+                "content": msg.content
+            })
+
+        # New genai client
+        client = genai_client.Client(api_key=api_key_str)
+
+        # Full conversation build karo
+        chat_history = []
+        for msg in data.conversation:
+            chat_history.append(
+                genai_client.types.Content(
+                    role="user" if msg.role == "user" else "model",
+                    parts=[genai_client.types.Part(text=msg.content)]
+                )
+            )
+
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=chat_history,
+            config=genai_client.types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=1000,
+                temperature=0.7,
+            )
+        )
+        return {"reply": response.text}
+
+    except Exception as e:
+        print(f"Interview Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Interview agent failed: {str(e)}")
 
 if __name__ == "__main__":
     print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")

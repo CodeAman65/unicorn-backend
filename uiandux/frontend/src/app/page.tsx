@@ -435,6 +435,30 @@ try {
   }}>
   📋 History
 </button>
+<button
+  onClick={() => {
+    localStorage.setItem("interviewResume", JSON.stringify(resumeData));
+    router.push("/interview");
+  }}
+  style={{
+    background: "rgba(16,185,129,0.15)",
+    border: "1px solid rgba(16,185,129,0.3)",
+    color: "#34d399",
+    fontSize: "12px",
+    fontWeight: 600,
+    padding: "6px 14px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    transition: "all 0.2s"
+  }}
+  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(16,185,129,0.28)"}
+  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(16,185,129,0.15)"}
+>
+  🎤 Mock Interview
+</button>
 
     {/* TARGET 4: DYNAMIC AUTH UI BUTTON */}
     <div style={{ display: "flex", alignItems: "center" }}>
