@@ -2,6 +2,7 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Firebase Console se copy kiya hua aapka real config object
 const firebaseConfig = {
@@ -20,3 +21,4 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 // Authentication aur Google Provider ko export kar rahe hain taaki login button par use ho sakein
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const db = getFirestore(app);

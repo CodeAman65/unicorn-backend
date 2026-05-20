@@ -5,8 +5,11 @@ import React, { useState, useEffect, useRef } from "react";
 // import html2pdf from "html2pdf.js";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 // Firebase auth aur provider ko import kar rahe hain login process ke liye
-import { auth, googleProvider } from "../../firebase"; // path check kar lena agar file kisi folder mein hai toh
+import { auth, googleProvider,db } from "../../firebase"; // path check kar lena agar file kisi folder mein hai toh
 import { signInWithPopup, signOut, onAuthStateChanged, User } from "firebase/auth";
+// import { db } from "../../firebase"; // apna path check karo
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 // ==========================================
 // TYPES & INTERFACES
@@ -180,6 +183,7 @@ export default function AIResumeArchitect() {
   // User ki login state check karne ke liye state variables
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true); // Shuruat mein loading true rahegi
+  const router = useRouter();
 
   // BACKEND CONNECTIVITY — unchanged
   const handleGenerate = async () => {
@@ -201,6 +205,25 @@ export default function AIResumeArchitect() {
       const roughTokens = Math.ceil((inputChars + outputChars) / 4);
       setTokensUsed(roughTokens);
       setResumeData(result);
+      // Resume generate hone ke baad Firestore mein save karo
+try {
+  const user = auth.currentUser; // auth tumhare firebase.ts se import karo
+  if (user) {
+    await addDoc(collection(db, "resumes"), {
+      userId: user.uid,
+      jobTitle: jobDescription.split("\n")[0].slice(0, 60), // JD ki pehli line as title
+      createdAt: serverTimestamp(),
+      profileInput: profileData,
+      jdInput: jobDescription,
+      resumeData: result,
+      tokenCount:roughTokens, // jo Feature 1 mein banaya tha
+    });
+    console.log("History saved!");
+  }
+} catch (error) {
+  console.error("History save nahi hua:", error);
+  // Error aaye toh bhi resume generation fail mat karo — silently handle karo
+}
       setAppState("done");
     } catch (error) {
       console.error("Error calling API:", error);
@@ -402,6 +425,16 @@ export default function AIResumeArchitect() {
       <div style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#10b981", animation: "pulseBadge 2s infinite" }} />
       <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.85)", fontWeight: 600, letterSpacing: "0.3px" }}>CrewAI Powered</span>
     </div>
+   <button onClick={() => router.push("/history")}
+  style={{
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "999px", padding: "8px 18px",
+    color: "rgba(255,255,255,0.7)", fontSize: "12px",
+    fontWeight: 600, cursor: "pointer"
+  }}>
+  📋 History
+</button>
 
     {/* TARGET 4: DYNAMIC AUTH UI BUTTON */}
     <div style={{ display: "flex", alignItems: "center" }}>
