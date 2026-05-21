@@ -81,7 +81,7 @@ export default function HistoryPage() {
         {/* Empty state */}
         {history.length === 0 && (
           <div style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", marginTop: "80px", fontSize: "15px" }}>
-            Abhi koi resume nahi bana. Pehla resume banao! ✦
+            No resumes found. Create your first resume! ✦
           </div>
         )}
 

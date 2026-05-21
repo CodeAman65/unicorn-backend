@@ -44,7 +44,7 @@ function InterviewContent() {
   const startInterview = async () => {
     const finalRole = manualRole.trim() || jobRole;
     if (!finalRole) {
-      alert("Job role daalo pehle!");
+      alert("Please enter a job role to start the interview.");
       return;
     }
     setJobRole(finalRole);
@@ -96,7 +96,7 @@ function InterviewContent() {
       console.error("Interview error:", error);
       const errorMsg: Message = {
         role: "assistant",
-        content: "Kuch gadbad hui. Backend check karo aur dobara try karo.",
+        content: "Something went wrong. Please check the backend and try again.",
       };
       setConversation([...updatedConversation, errorMsg]);
     } finally {
@@ -304,7 +304,7 @@ function InterviewContent() {
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Apna jawab yahan likho... (Enter to send, Shift+Enter for new line)"
+                  placeholder="Enter your answer here... (Enter to send, Shift+Enter for new line)"
                   disabled={isLoading}
                   rows={3}
                   style={{ flex: 1, background: "transparent", border: "none", color: "#f1f5f9", fontSize: "14px", resize: "none", lineHeight: "1.6", outline: "none", fontFamily: "'Plus Jakarta Sans', sans-serif" }}

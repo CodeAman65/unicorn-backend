@@ -56,7 +56,7 @@ interface ResumeData {
 
 // DEFAULT PLACEHOLDER DATA
 const DEFAULT_RESUME: ResumeData = {
-  name: "Alex Chen",
+  name: "Aman Rao",
   contact: "483-555-6580  •  alex@chen.dev  •  linkedin.com/in/alexchen",
   summary:
     "Results-driven Senior Software Engineer with 5+ years building scalable distributed systems. Passionate about clean architecture and shipping pristine production systems.",
@@ -225,13 +225,13 @@ try {
     console.log("History saved!");
   }
 } catch (error) {
-  console.error("History save nahi hua:", error);
+  console.error("History save failed:", error);
   // Error aaye toh bhi resume generation fail mat karo — silently handle karo
 }
       setAppState("done");
     } catch (error) {
       console.error("Error calling API:", error);
-      alert("Backend se connection fail ho gaya. Check karo backend chal raha hai ya nahi.");
+      alert("Backend connection failed. Try after a while!");
       setAppState("idle");
     }
   };
@@ -263,7 +263,7 @@ try {
       setEditInstruction(""); // Chat field clear karo
     } catch (error) {
       console.error("Error editing resume:", error);
-      alert("Kuch gadbad hui edit karte waqt. Firse try karein!");
+      alert("Something went wrong while editing. Please try again!");
     } finally {
       setIsEditing(false);
     }
@@ -275,7 +275,7 @@ try {
       alert("Bhai, kamyaabi se login ho gaye ho!");
     } catch (error: any) {
       console.error("Login Error:", error);
-      alert("Login mein kuch dikkat aayi: " + error.message);
+      alert("Login failed: " + error.message);
     }
   };
 
@@ -515,7 +515,7 @@ try {
                 <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>Raw Profile Data</h2>
               </div>
               <textarea value={profileData} onChange={(e) => setProfileData(e.target.value)}
-                placeholder="Apne baare mein sab likh do (Skills, Projects, Education, Experience)..."
+                placeholder="Describe your skills, projects, education, and experience..."
                 className="custom-scroll"
                 style={{ width: "100%", height: "160px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "14px", color: "#f3f4f6", fontSize: "14px", padding: "16px", outline: "none", resize: "none", lineHeight: "1.6" }}
                 onFocus={(e) => (e.target.style.animation = "inputBorderNeon 3s infinite")}
@@ -534,7 +534,7 @@ try {
                 <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>Target Job Description</h2>
               </div>
               <textarea value={jobDescription} onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Jis job ke liye apply karna hai, uska JD yahan paste karo..."
+                placeholder="Paste the job description you want to apply for..."
                 className="custom-scroll"
                 style={{ width: "100%", height: "160px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "14px", color: "#f3f4f6", fontSize: "14px", padding: "16px", outline: "none", resize: "none", lineHeight: "1.6" }}
                 onFocus={(e) => (e.target.style.animation = "inputBorderNeon 3s infinite")}
@@ -617,7 +617,7 @@ try {
               <form onSubmit={handleEditResume} style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
                 <input
                   type="text"
-                  placeholder="Bhai, summary choti kar de / React JS jod de..."
+                  placeholder="E.g., 'Make it more concise' or 'Highlight leadership skills'"
                   value={editInstruction}
                   onChange={(e) => setEditInstruction(e.target.value)}
                   disabled={isEditing}
