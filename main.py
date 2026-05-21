@@ -22,7 +22,7 @@ app = FastAPI(title="AI Resume Builder API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://unicorn-backend-fw085djg7-codeaman65s-projects.vercel.ap"],
+    allow_origins=["https://unicorn-backend-fw085djg7-codeaman65s-projects.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
