@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import uvicorn
+from dotenv import load_dotenv
+load_dotenv()
 
 # ==========================================
 # 1. FASTAPI & STRUCTURAL SETUP
@@ -25,26 +27,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# api_key_str = "AIzaSyD1Xz_8smXMZ26O6rU4DbZDXWGLP-E8HFM"  # <-- Apni key yahan rakho
-# os.environ["GEMINI_API_KEY"] = api_key_str
-# os.environ["GOOGLE_API_KEY"] = api_key_str
-
-# gemini_llm = LLM(
-#     model="gemini-2.5-flash",
-#     api_key=api_key_str
-# )
-# gemini_api_key = "AIzaSyCHJsFeq5PlbHILrPIiNT8HaEEvMQUtQoc"  # Purana Gemini key — CrewAI ke liye rakho
+groq_api_key = os.getenv("GROQ_API_KEY")
 groq_api_key = "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"    # Naya Groq key yahan
 os.environ["GROQ_API_KEY"] = groq_api_key
-
-# os.environ["GEMINI_API_KEY"] = gemini_api_key
-# os.environ["GOOGLE_API_KEY"] = gemini_api_key
-
-# gemini_llm = LLM(
-#     model="gemini/gemini-2.5-flash",
-#     api_key=gemini_api_key
-# )
 
 groq_llm = LLM(
     model="groq/llama-3.3-70b-versatile",
@@ -328,20 +313,6 @@ async def edit_resume_endpoint(data: EditResumeRequest):
             f"User Edit Instruction: {data.instruction}"
         )
 
-        # CrewAI ke standard LLM call ki tarah, hum direct model initialize kar rahe hain bina extra package ke
-        # from google.generativeai import GenerativeModel
-        # import google.generativeai as genai
-        
-        # # API key configure karo (Jo upar api_key_str mein defined hai)
-        # genai.configure(api_key=api_key_str)
-
-        # model = GenerativeModel(
-        #     model_name="gemini-2.5-flash",
-        #     system_instruction=system_instruction
-        # )
-        
-        # response = model.generate_content(user_content)
-        # cleaned_response = response.text.strip()
         groq_messages = [
             {"role": "system", "content": system_instruction},
             {"role": "user", "content": user_content}
@@ -427,37 +398,6 @@ Your rules:
 
 Interview style: Professional but conversational. Make the candidate feel comfortable."""
 
-        # # Conversation history format karo
-        # messages = []
-        # for msg in data.conversation:
-        #     messages.append({
-        #         "role": msg.role,
-        #         "content": msg.content
-        #     })
-
-        # # New genai client
-        # client = genai_client.Client(api_key=api_key_str)
-
-        # # Full conversation build karo
-        # chat_history = []
-        # for msg in data.conversation:
-        #     chat_history.append(
-        #         genai_client.types.Content(
-        #             role="user" if msg.role == "user" else "model",
-        #             parts=[genai_client.types.Part(text=msg.content)]
-        #         )
-        #     )
-
-        # response = client.models.generate_content(
-        #     model="gemini-2.5-flash",
-        #     contents=chat_history,
-        #     config=genai_client.types.GenerateContentConfig(
-        #         system_instruction=system_prompt,
-        #         max_output_tokens=1000,
-        #         temperature=0.7,
-        #     )
-        # )
-        # return {"reply": response.text}
         groq_messages = [{"role": "system", "content": system_prompt}]
 
         for msg in data.conversation:

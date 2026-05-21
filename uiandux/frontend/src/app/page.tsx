@@ -400,21 +400,6 @@ try {
       {/* VIEWPORT LAYER */}
       <div style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
 
-        {/* NAV BAR
-        <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 40px", position: "relative" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ width: "32px", height: "32px", borderRadius: "10px", background: "linear-gradient(135deg, #a78bfa 0%, #06b6d4 100%)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 16px rgba(167,139,250,0.5)" }}>
-              <span style={{ color: "#fff", fontSize: "16px", fontWeight: "bold" }}>✦</span>
-            </div>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "22px", letterSpacing: "-0.5px", background: "linear-gradient(to right, #ffffff, #cbd5e1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              AI Resume Architect
-            </span>
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "999px", padding: "8px 18px", display: "flex", alignItems: "center", gap: "10px", backdropFilter: "blur(10px)" }}>
-            <div style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#10b981", animation: "pulseBadge 2s infinite" }} />
-            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.85)", fontWeight: 600, letterSpacing: "0.3px" }}>CrewAI Powered</span>
-          </div>
-        </nav> */}
         {/* NAV BAR (UPDATED WITH TARGET 4 AUTH BUTTONS) */}
 <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 40px", position: "relative" }}>
   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
