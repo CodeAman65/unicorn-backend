@@ -75,7 +75,7 @@ function InterviewContent() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/interview",
+        "https://unicorn-backend-3.onrender.com/api/interview",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
