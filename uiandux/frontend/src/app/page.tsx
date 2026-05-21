@@ -193,7 +193,7 @@ export default function AIResumeArchitect() {
     }
     setAppState("loading");
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/generate-resume", {
+      const response = await fetch("https://unicorn-backend-2.onrender.com/api/generate-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile: profileData, jd: jobDescription }),
@@ -243,7 +243,7 @@ try {
 
     setIsEditing(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/edit-resume", {
+      const response = await fetch("https://unicorn-backend-2.onrender.com/api/edit-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
