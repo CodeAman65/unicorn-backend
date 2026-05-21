@@ -4,7 +4,8 @@ import os
 import warnings
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
-from google import genai as genai_client
+# from google import genai as genai_client
+from groq import Groq
 from crewai import Agent, Task, Crew, Process, LLM
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,15 +26,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-api_key_str = "AIzaSyD1Xz_8smXMZ26O6rU4DbZDXWGLP-E8HFM"  # <-- Apni key yahan rakho
-os.environ["GEMINI_API_KEY"] = api_key_str
-os.environ["GOOGLE_API_KEY"] = api_key_str
+# api_key_str = "AIzaSyD1Xz_8smXMZ26O6rU4DbZDXWGLP-E8HFM"  # <-- Apni key yahan rakho
+# os.environ["GEMINI_API_KEY"] = api_key_str
+# os.environ["GOOGLE_API_KEY"] = api_key_str
 
-gemini_llm = LLM(
-    model="gemini-2.5-flash",
-    api_key=api_key_str
+# gemini_llm = LLM(
+#     model="gemini-2.5-flash",
+#     api_key=api_key_str
+# )
+# gemini_api_key = "AIzaSyCHJsFeq5PlbHILrPIiNT8HaEEvMQUtQoc"  # Purana Gemini key — CrewAI ke liye rakho
+groq_api_key = "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"    # Naya Groq key yahan
+os.environ["GROQ_API_KEY"] = groq_api_key
+
+# os.environ["GEMINI_API_KEY"] = gemini_api_key
+# os.environ["GOOGLE_API_KEY"] = gemini_api_key
+
+# gemini_llm = LLM(
+#     model="gemini/gemini-2.5-flash",
+#     api_key=gemini_api_key
+# )
+
+groq_llm = LLM(
+    model="groq/llama-3.3-70b-versatile",
+    api_key=groq_api_key
 )
-
+# Groq client — interview + edit ke liye
+groq_client = Groq(api_key=groq_api_key)
 
 # ==========================================
 # 2. REQUEST MODEL  (frontend se aata hai)
@@ -141,7 +159,7 @@ def generate_professional_resume(user_input: str, job_description: str):
         ),
         verbose=True,
         allow_delegation=False,
-        llm=gemini_llm
+        llm=groq_llm
     )
 
     # --- AGENT 2: Resume Writer ---
@@ -161,7 +179,7 @@ def generate_professional_resume(user_input: str, job_description: str):
         ),
         verbose=True,
         allow_delegation=False,
-        llm=gemini_llm
+        llm=groq_llm
     )
 
     # --- AGENT 3: ATS Reviewer ---
@@ -180,7 +198,7 @@ def generate_professional_resume(user_input: str, job_description: str):
         ),
         verbose=True,
         allow_delegation=False,
-        llm=gemini_llm
+        llm=groq_llm
     )
 
     # --- TASK 1 ---
@@ -311,19 +329,33 @@ async def edit_resume_endpoint(data: EditResumeRequest):
         )
 
         # CrewAI ke standard LLM call ki tarah, hum direct model initialize kar rahe hain bina extra package ke
-        from google.generativeai import GenerativeModel
-        import google.generativeai as genai
+        # from google.generativeai import GenerativeModel
+        # import google.generativeai as genai
         
-        # API key configure karo (Jo upar api_key_str mein defined hai)
-        genai.configure(api_key=api_key_str)
+        # # API key configure karo (Jo upar api_key_str mein defined hai)
+        # genai.configure(api_key=api_key_str)
 
-        model = GenerativeModel(
-            model_name="gemini-2.5-flash",
-            system_instruction=system_instruction
-        )
+        # model = GenerativeModel(
+        #     model_name="gemini-2.5-flash",
+        #     system_instruction=system_instruction
+        # )
         
-        response = model.generate_content(user_content)
-        cleaned_response = response.text.strip()
+        # response = model.generate_content(user_content)
+        # cleaned_response = response.text.strip()
+        groq_messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_content}
+        ]
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=groq_messages,
+            max_tokens=4000,
+            # temperature=0.3
+            response_format={"type": "json_object"}
+        )
+
+        cleaned_response = response.choices[0].message.content.strip()
         
         # Agar Gemini markdown backticks ```json lagaye toh use safely remove karo
         if cleaned_response.startswith("```"):
@@ -333,7 +365,8 @@ async def edit_resume_endpoint(data: EditResumeRequest):
         updated_resume_dict = json.loads(cleaned_response)
         return updated_resume_dict
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as je:
+        print(f"JSON Decode Error: {str(je)} | Raw response was: {cleaned_response}")
         raise HTTPException(
             status_code=500, 
             detail="AI ne invalid JSON bana diya, please instruction thoda clear likh kar firse try karein."
@@ -394,37 +427,52 @@ Your rules:
 
 Interview style: Professional but conversational. Make the candidate feel comfortable."""
 
-        # Conversation history format karo
-        messages = []
+        # # Conversation history format karo
+        # messages = []
+        # for msg in data.conversation:
+        #     messages.append({
+        #         "role": msg.role,
+        #         "content": msg.content
+        #     })
+
+        # # New genai client
+        # client = genai_client.Client(api_key=api_key_str)
+
+        # # Full conversation build karo
+        # chat_history = []
+        # for msg in data.conversation:
+        #     chat_history.append(
+        #         genai_client.types.Content(
+        #             role="user" if msg.role == "user" else "model",
+        #             parts=[genai_client.types.Part(text=msg.content)]
+        #         )
+        #     )
+
+        # response = client.models.generate_content(
+        #     model="gemini-2.5-flash",
+        #     contents=chat_history,
+        #     config=genai_client.types.GenerateContentConfig(
+        #         system_instruction=system_prompt,
+        #         max_output_tokens=1000,
+        #         temperature=0.7,
+        #     )
+        # )
+        # return {"reply": response.text}
+        groq_messages = [{"role": "system", "content": system_prompt}]
+
         for msg in data.conversation:
-            messages.append({
+            groq_messages.append({
                 "role": msg.role,
                 "content": msg.content
             })
 
-        # New genai client
-        client = genai_client.Client(api_key=api_key_str)
-
-        # Full conversation build karo
-        chat_history = []
-        for msg in data.conversation:
-            chat_history.append(
-                genai_client.types.Content(
-                    role="user" if msg.role == "user" else "model",
-                    parts=[genai_client.types.Part(text=msg.content)]
-                )
-            )
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=chat_history,
-            config=genai_client.types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                max_output_tokens=1000,
-                temperature=0.7,
-            )
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=groq_messages,
+            max_tokens=1000,
+            temperature=0.7,
         )
-        return {"reply": response.text}
+        return {"reply": response.choices[0].message.content}
 
     except Exception as e:
         print(f"Interview Error: {str(e)}")

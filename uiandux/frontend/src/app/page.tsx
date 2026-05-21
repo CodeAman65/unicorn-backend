@@ -193,12 +193,16 @@ export default function AIResumeArchitect() {
     }
     setAppState("loading");
     try {
-      const response = await fetch("https://unicorn-backend-2.onrender.com/api/generate-resume", {
+      const response = await fetch("http://127.0.0.1:8000/api/generate-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile: profileData, jd: jobDescription }),
       });
-      if (!response.ok) throw new Error("Backend server error!");
+      // if (!response.ok) throw new Error("Backend server error!");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Backend error: ${errorText}`);
+      }
       const result = await response.json();
       const inputChars = profileData.length + jobDescription.length;
       const outputChars = JSON.stringify(result).length;
@@ -239,7 +243,7 @@ try {
 
     setIsEditing(true);
     try {
-      const response = await fetch("https://unicorn-backend-2.onrender.com/api/edit-resume", {
+      const response = await fetch("http://127.0.0.1:8000/api/edit-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -249,7 +253,9 @@ try {
       });
 
       if (!response.ok) {
-        throw new Error("Backend se response sahi nahi mila!");
+        const errorText = await response.text(); // ← ye add karo
+        console.error("Backend error details:", errorText);
+        throw new Error(`Backend error: ${errorText}`);
       }
 
       const data = await response.json();
