@@ -362,13 +362,68 @@ class InterviewRequest(BaseModel):
     job_role: str            # Job role — auto ya manual
     conversation: list[Message]  # Poori chat history
 
+# @app.post("/api/interview")
+# async def interview_endpoint(data: InterviewRequest):
+#     if not data.job_role:
+#         raise HTTPException(status_code=400, detail="Job role required!")
+
+#     try:
+#         # Resume context banao
+#         resume_context = ""
+#         if data.resume_data:
+#             resume_context = f"""
+# Candidate Resume:
+# - Name: {data.resume_data.get('name', 'Candidate')}
+# - Summary: {data.resume_data.get('summary', '')}
+# - Skills: {', '.join(data.resume_data.get('skills', []))}
+# - Experience: {str(data.resume_data.get('experience', []))}
+# - Projects: {str(data.resume_data.get('projects', []))}
+# """
+
+#         # System prompt — interviewer personality
+#         system_prompt = f"""You are an expert technical interviewer conducting a mock interview for the role of: {data.job_role}.
+
+# {resume_context}
+
+# Your rules:
+# 1. Ask ONE question at a time — never multiple questions together
+# 2. Follow the STAR method (Situation, Task, Action, Result) for behavioral questions
+# 3. Ask intelligent follow-up questions based on the candidate's PREVIOUS answer
+# 4. Mix technical questions with behavioral ones naturally
+# 5. If the answer is vague, probe deeper — "Can you elaborate on that?" or "What was the specific outcome?"
+# 6. After every 4-5 questions, give brief encouraging feedback
+# 7. Start the interview with a warm welcome and first question
+# 8. Keep responses concise — you are an interviewer, not a teacher
+# 9. Use the candidate's resume details to ask specific questions about their projects and experience
+# 10. Never break character — always stay as the interviewer
+
+# Interview style: Professional but conversational. Make the candidate feel comfortable."""
+
+#         groq_messages = [{"role": "system", "content": system_prompt}]
+
+#         for msg in data.conversation:
+#             groq_messages.append({
+#                 "role": msg.role,
+#                 "content": msg.content
+#             })
+
+#         response = groq_client.chat.completions.create(
+#             model="llama-3.3-70b-versatile",
+#             messages=groq_messages,
+#             max_tokens=1000,
+#             temperature=0.7,
+#         )
+#         return {"reply": response.choices[0].message.content}
+
+#     except Exception as e:
+#         print(f"Interview Error: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"Interview agent failed: {str(e)}")
 @app.post("/api/interview")
 async def interview_endpoint(data: InterviewRequest):
     if not data.job_role:
         raise HTTPException(status_code=400, detail="Job role required!")
 
     try:
-        # Resume context banao
         resume_context = ""
         if data.resume_data:
             resume_context = f"""
@@ -380,30 +435,83 @@ Candidate Resume:
 - Projects: {str(data.resume_data.get('projects', []))}
 """
 
-        # System prompt — interviewer personality
-        system_prompt = f"""You are an expert technical interviewer conducting a mock interview for the role of: {data.job_role}.
-
+        # Interview type ke hisaab se alag system prompt
+        type_prompts = {
+            "behavioral": f"""You are a senior HR interviewer conducting a BEHAVIORAL interview for: {data.job_role}.
 {resume_context}
+Rules:
+1. Ask ONE behavioral question at a time using STAR method
+2. Questions must start with "Tell me about a time when..." or "Describe a situation where..."
+3. Follow up intelligently based on their answer — probe for Situation, Task, Action, Result
+4. Focus on: teamwork, conflict resolution, leadership, failure & learning, adaptability
+5. Be warm but professional. After every 3-4 questions give brief encouraging feedback.""",
 
-Your rules:
-1. Ask ONE question at a time — never multiple questions together
-2. Follow the STAR method (Situation, Task, Action, Result) for behavioral questions
-3. Ask intelligent follow-up questions based on the candidate's PREVIOUS answer
-4. Mix technical questions with behavioral ones naturally
-5. If the answer is vague, probe deeper — "Can you elaborate on that?" or "What was the specific outcome?"
-6. After every 4-5 questions, give brief encouraging feedback
-7. Start the interview with a warm welcome and first question
-8. Keep responses concise — you are an interviewer, not a teacher
-9. Use the candidate's resume details to ask specific questions about their projects and experience
-10. Never break character — always stay as the interviewer
+            "technical": f"""You are a senior technical interviewer conducting a TECHNICAL/DSA interview for: {data.job_role}.
+{resume_context}
+Rules:
+1. Ask ONE technical question at a time — start easy, progressively increase difficulty
+2. Include: data structures, algorithms, time/space complexity, system concepts
+3. If they give a solution, ask "Can you optimize this?" or "What's the time complexity?"
+4. Ask about their projects' technical decisions from their resume
+5. Include coding problems, debugging scenarios, and concept explanations
+6. Be precise and technical. Acknowledge correct answers briefly before moving on.""",
 
-Interview style: Professional but conversational. Make the candidate feel comfortable."""
+            "system_design": f"""You are a principal engineer conducting a SYSTEM DESIGN interview for: {data.job_role}.
+{resume_context}
+Rules:
+1. Give ONE system design problem at a time — e.g. "Design a URL shortener", "Design Twitter feed"
+2. Guide them through: Requirements → Scale estimation → High-level design → Deep dive → Bottlenecks
+3. Ask follow-up questions: "How would you handle 1M users?", "What if the database goes down?"
+4. Evaluate: scalability, reliability, trade-offs, database choices, caching, load balancing
+5. Reference their resume projects for relevant follow-ups
+6. Think out loud with them — this is collaborative.""",
 
+            "case_study": f"""You are a product/business interviewer conducting a CASE STUDY interview for: {data.job_role}.
+{resume_context}
+Rules:
+1. Present ONE business case or product problem at a time
+2. Cases include: market sizing, product improvement, business strategy, metrics analysis
+3. Guide them: "How would you approach this?", "What data would you look at?"
+4. Evaluate: structured thinking, data-driven decisions, creativity, business acumen
+5. Ask follow-ups: "What metrics would define success?", "What are the risks?"
+6. Be like a McKinsey/BCG interviewer — structured, analytical.""",
+
+            "product": f"""You are a senior PM conducting a PRODUCT MANAGEMENT interview for: {data.job_role}.
+{resume_context}
+Rules:
+1. Ask ONE PM question at a time
+2. Topics: product sense, prioritization, metrics, roadmap, user empathy, A/B testing
+3. Classic questions: "How would you improve [product]?", "How do you prioritize features?"
+4. Evaluate: user-first thinking, data literacy, stakeholder management, vision
+5. Ask: "Who is the target user?", "How would you measure success?", "What would you NOT build?"
+6. Be like a Google/Meta PM interviewer.""",
+
+            "leadership": f"""You are a VP-level interviewer conducting a LEADERSHIP interview for: {data.job_role}.
+{resume_context}
+Rules:
+1. Ask ONE leadership/management question at a time
+2. Topics: team building, conflict resolution, vision setting, cross-functional collaboration, driving results
+3. Focus on: influence without authority, handling underperformers, building culture
+4. Use questions like: "Tell me about a time you had to lead without formal authority"
+5. Probe for scale: "How many people?", "What was the business impact?"
+6. Be senior and strategic in your questioning style."""
+        }
+
+        system_prompt = type_prompts.get(data.interview_type, type_prompts["behavioral"])
+
+        # Gemini history build karo
+        gemini_history = []
+        for msg in data.conversation[:-1]:
+            gemini_history.append({
+                "role": "user" if msg.role == "user" else "model",
+                "parts": [msg.content]
+            })
+
+        # Groq call
         groq_messages = [{"role": "system", "content": system_prompt}]
-
         for msg in data.conversation:
             groq_messages.append({
-                "role": msg.role,
+                "role": "user" if msg.role == "user" else "assistant",
                 "content": msg.content
             })
 
@@ -411,8 +519,9 @@ Interview style: Professional but conversational. Make the candidate feel comfor
             model="llama-3.3-70b-versatile",
             messages=groq_messages,
             max_tokens=1000,
-            temperature=0.7,
+            temperature=0.7
         )
+
         return {"reply": response.choices[0].message.content}
 
     except Exception as e:
@@ -689,6 +798,12 @@ Analyze this answer on all 6 dimensions."""
     except Exception as e:
         print(f"Quality Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+class InterviewRequest(BaseModel):
+    resume_data: dict
+    job_role: str
+    conversation: list[Message]
+    interview_type: str = "behavioral"  # default
 
 if __name__ == "__main__":
     print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")

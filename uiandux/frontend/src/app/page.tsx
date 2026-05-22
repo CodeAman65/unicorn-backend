@@ -177,6 +177,7 @@ export default function AIResumeArchitect() {
   const [tokensUsed, setTokensUsed] = useState<number | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   
+  
   // TARGET 3: NEW STATES FOR AI EDIT
   const [editInstruction, setEditInstruction] = useState<string>("");
   const [isEditing, setIsEditing] = useState<boolean>(false);

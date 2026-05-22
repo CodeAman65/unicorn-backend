@@ -97,6 +97,16 @@ function InterviewContent() {
   const [isPrepLoading, setIsPrepLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"interview" | "prep">("interview");
   const [prepActiveSection, setPrepActiveSection] = useState("culture");  
+  const [interviewType, setInterviewType] = useState("behavioral");
+
+  const interviewTypes = [
+  { id: "behavioral", label: "Behavioral HR", icon: "🧠", color: "#10b981", desc: "STAR method, soft skills, culture fit" },
+  { id: "technical", label: "Technical DSA", icon: "💻", color: "#6366f1", desc: "Algorithms, coding, complexity analysis" },
+  { id: "system_design", label: "System Design", icon: "🏗️", color: "#06b6d4", desc: "Architecture, scalability, trade-offs" },
+  { id: "case_study", label: "Case Study", icon: "📊", color: "#f59e0b", desc: "Business problems, structured thinking" },
+  { id: "product", label: "Product Management", icon: "🎯", color: "#ec4899", desc: "Product sense, metrics, roadmap" },
+  { id: "leadership", label: "Leadership", icon: "👑", color: "#a78bfa", desc: "Team management, influence, vision" },
+];
 
   // Page load hone pe localStorage se resume data lo
   useEffect(() => {
@@ -157,6 +167,7 @@ function InterviewContent() {
             resume_data: resumeData || {},
             job_role: finalRole,
             conversation: updatedConversation,
+            interview_type: interviewType,
           }),
         }
       );
@@ -404,6 +415,37 @@ function InterviewContent() {
           <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)", marginBottom: "28px", lineHeight: "1.6" }}>
             AI interviewer will ask role-specific questions using STAR method, follow up on your answers, and give you a real interview experience.
           </p>
+          {/* Interview Type Selector */}
+            <div style={{ marginBottom: "24px" }}>
+              <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", fontWeight: 600, display: "block", marginBottom: "12px" }}>
+                🎯 Interview Type Select Karo:
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                {interviewTypes.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => setInterviewType(type.id)}
+                    style={{
+                      padding: "12px 10px",
+                      borderRadius: "12px",
+                      border: `1px solid ${interviewType === type.id ? type.color : "rgba(255,255,255,0.06)"}`,
+                      background: interviewType === type.id ? `${type.color}18` : "rgba(255,255,255,0.02)",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{ fontSize: "20px", marginBottom: "4px" }}>{type.icon}</div>
+                    <div style={{ fontSize: "11px", fontWeight: 700, color: interviewType === type.id ? type.color : "rgba(255,255,255,0.7)", marginBottom: "2px" }}>
+                      {type.label}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)", lineHeight: "1.4" }}>
+                      {type.desc}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
           {/* Auto-detected role */}
           {jobRole && (
@@ -457,12 +499,26 @@ function InterviewContent() {
       {/* CHAT AREA */}
       {interviewStarted && (
         <>
-          {/* Role badge */}
+          {/* Role badge
           <div style={{ textAlign: "center" }}>
             <span style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "999px", padding: "6px 16px", fontSize: "12px", color: "#a78bfa", fontWeight: 600 }}>
               Interviewing for: {jobRole}
             </span>
-          </div>
+          </div> */}
+          {/* Role + Type badge */}
+            <div style={{ textAlign: "center", display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
+              <span style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "999px", padding: "6px 16px", fontSize: "12px", color: "#a78bfa", fontWeight: 600 }}>
+                Interviewing for: {jobRole}
+              </span>
+              <span style={{
+                background: `${interviewTypes.find(t => t.id === interviewType)?.color}18`,
+                border: `1px solid ${interviewTypes.find(t => t.id === interviewType)?.color}40`,
+                borderRadius: "999px", padding: "6px 16px", fontSize: "12px", fontWeight: 600,
+                color: interviewTypes.find(t => t.id === interviewType)?.color
+              }}>
+                {interviewTypes.find(t => t.id === interviewType)?.icon} {interviewTypes.find(t => t.id === interviewType)?.label}
+              </span>
+            </div>
 
           {/* Messages */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "16px", minHeight: "400px" }}>
