@@ -594,6 +594,101 @@ Score this answer on STAR framework and provide detailed feedback."""
     except Exception as e:
         print(f"Score Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+# ==========================================
+# ANSWER QUALITY FEEDBACK ENDPOINT
+# ==========================================
+class QualityRequest(BaseModel):
+    question: str
+    answer: str
+    job_role: str
+    job_description: str = ""
+
+@app.post("/api/quality-feedback")
+async def quality_feedback_endpoint(data: QualityRequest):
+    if not data.answer or not data.question:
+        raise HTTPException(status_code=400, detail="Question aur answer dono chahiye!")
+
+    try:
+        system_instruction = """You are an expert interview coach analyzing answer quality.
+
+Analyze the candidate's answer on these 6 dimensions and respond in this EXACT JSON format (no markdown, no extra text):
+{
+  "clarity": {
+    "score": 82,
+    "label": "Clear",
+    "feedback": "Your answer was structured well but the opening was vague"
+  },
+  "relevance": {
+    "score": 70,
+    "label": "Partially Relevant",
+    "feedback": "Answer drifted from the core question in the middle"
+  },
+  "length": {
+    "score": 90,
+    "label": "Perfect Length",
+    "feedback": "Good length — detailed but not rambling"
+  },
+  "filler_words": {
+    "detected": ["um", "basically", "you know"],
+    "count": 3,
+    "score": 75,
+    "feedback": "3 filler words detected — practice pausing instead"
+  },
+  "missing_keywords": {
+    "words": ["scalability", "ownership", "metrics"],
+    "feedback": "These JD keywords were missing from your answer"
+  },
+  "confidence": {
+    "score": 78,
+    "label": "Confident",
+    "signals": ["Used passive voice twice", "Strong opening statement"],
+    "feedback": "Overall confident tone with minor hedging"
+  },
+  "overall_quality": 79,
+  "one_line_verdict": "Strong answer — add metrics and remove filler words to make it exceptional"
+}
+
+Scoring guide:
+- clarity: Is the answer easy to understand? Clear structure?
+- relevance: Does it directly answer the question? Stays on topic?
+- length: 0-49 too short, 50-79 acceptable, 80-100 perfect length
+- filler_words: Check for: um, uh, basically, you know, like, so, actually, literally, kind of, sort of
+- missing_keywords: Compare with job role and question context
+- confidence: Active voice, specific claims, no excessive hedging"""
+
+        user_content = f"""Job Role: {data.job_role}
+Job Description Context: {data.job_description or 'Not provided'}
+Interview Question: {data.question}
+Candidate Answer: {data.answer}
+
+Analyze this answer on all 6 dimensions."""
+
+        groq_messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_content}
+        ]
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=groq_messages,
+            max_tokens=1500,
+            temperature=0.2
+        )
+
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.strip("```").strip("json").strip()
+
+        quality_data = json.loads(raw)
+        return quality_data
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Quality analysis failed — invalid JSON")
+    except Exception as e:
+        print(f"Quality Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")
