@@ -361,63 +361,8 @@ class InterviewRequest(BaseModel):
     resume_data: dict        # Generated resume JSON
     job_role: str            # Job role — auto ya manual
     conversation: list[Message]  # Poori chat history
+    interview_type: str = "behavioral"
 
-# @app.post("/api/interview")
-# async def interview_endpoint(data: InterviewRequest):
-#     if not data.job_role:
-#         raise HTTPException(status_code=400, detail="Job role required!")
-
-#     try:
-#         # Resume context banao
-#         resume_context = ""
-#         if data.resume_data:
-#             resume_context = f"""
-# Candidate Resume:
-# - Name: {data.resume_data.get('name', 'Candidate')}
-# - Summary: {data.resume_data.get('summary', '')}
-# - Skills: {', '.join(data.resume_data.get('skills', []))}
-# - Experience: {str(data.resume_data.get('experience', []))}
-# - Projects: {str(data.resume_data.get('projects', []))}
-# """
-
-#         # System prompt — interviewer personality
-#         system_prompt = f"""You are an expert technical interviewer conducting a mock interview for the role of: {data.job_role}.
-
-# {resume_context}
-
-# Your rules:
-# 1. Ask ONE question at a time — never multiple questions together
-# 2. Follow the STAR method (Situation, Task, Action, Result) for behavioral questions
-# 3. Ask intelligent follow-up questions based on the candidate's PREVIOUS answer
-# 4. Mix technical questions with behavioral ones naturally
-# 5. If the answer is vague, probe deeper — "Can you elaborate on that?" or "What was the specific outcome?"
-# 6. After every 4-5 questions, give brief encouraging feedback
-# 7. Start the interview with a warm welcome and first question
-# 8. Keep responses concise — you are an interviewer, not a teacher
-# 9. Use the candidate's resume details to ask specific questions about their projects and experience
-# 10. Never break character — always stay as the interviewer
-
-# Interview style: Professional but conversational. Make the candidate feel comfortable."""
-
-#         groq_messages = [{"role": "system", "content": system_prompt}]
-
-#         for msg in data.conversation:
-#             groq_messages.append({
-#                 "role": msg.role,
-#                 "content": msg.content
-#             })
-
-#         response = groq_client.chat.completions.create(
-#             model="llama-3.3-70b-versatile",
-#             messages=groq_messages,
-#             max_tokens=1000,
-#             temperature=0.7,
-#         )
-#         return {"reply": response.choices[0].message.content}
-
-#     except Exception as e:
-#         print(f"Interview Error: {str(e)}")
-#         raise HTTPException(status_code=500, detail=f"Interview agent failed: {str(e)}")
 @app.post("/api/interview")
 async def interview_endpoint(data: InterviewRequest):
     if not data.job_role:
@@ -799,11 +744,6 @@ Analyze this answer on all 6 dimensions."""
         print(f"Quality Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
-class InterviewRequest(BaseModel):
-    resume_data: dict
-    job_role: str
-    conversation: list[Message]
-    interview_type: str = "behavioral"  # default
 
 if __name__ == "__main__":
     print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")
