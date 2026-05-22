@@ -336,67 +336,221 @@ function InterviewContent() {
   recognition.start();
   setIsListening(true);
   setTranscript("");
+};
 
-};const stopListeningAndSend = async () => {
+// const stopListeningAndSend = async () => {
 
-  recognitionRef.current?.stop();
+//   recognitionRef.current?.stop();
 
-  setIsListening(false);
+//   setIsListening(false);
 
-  if (!transcript.trim()) return;
+//   if (!transcript.trim()) return;
 
-  setIsLoading(true);  try {
+//   setIsLoading(true);  try {
 
-    // 1. Get AI response
-    const response = await fetch("https://unicorn-backend-3.onrender.com/api/voice-interview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        transcript,
-        job_role: jobRole,
-        interview_type: interviewType,
-        conversation: conversation.slice(-6),
-        resume_data: resumeData || {},
-        accent: voiceAccent,
-      }),
-    });
+//     // 1. Get AI response
+//     const response = await fetch("https://unicorn-backend-3.onrender.com/api/voice-interview", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         transcript,
+//         job_role: jobRole,
+//         interview_type: interviewType,
+//         conversation: conversation.slice(-6),
+//         resume_data: resumeData || {},
+//         accent: voiceAccent,
+//       }),
+//     });
+//     const data = await response.json();
+
+
+//     const aiReply = data.reply;    // Update conversation
+
+//     const userMsg: ScoredMessage = { role: "user", content: transcript };
+//     const aiMsg: ScoredMessage = { role: "assistant", content: aiReply };
+//     setConversation(prev => [...prev, userMsg, aiMsg]);
+
+//     setTranscript("");    // 2. Get TTS audio
+
+//     setIsSpeaking(true);
+//     const ttsResponse = await fetch("https://unicorn-backend-3.onrender.com/api/tts", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ text: aiReply, accent: voiceAccent }),
+
+//     });    const ttsData = await ttsResponse.json();
+
+
+//     const audioSrc = `data:audio/mp3;base64,${ttsData.audio_base64}`;    if (audioRef.current) {
+
+//       audioRef.current.src = audioSrc;
+//       audioRef.current.play();
+//       audioRef.current.onended = () => setIsSpeaking(false);
+
+//     }    // Score the answer
+
+//     const lastAiQ = conversation.filter(m => m.role === "assistant").slice(-1)[0]?.content || "";
+//     const userIdx = conversation.length;
+
+//     scoreUserAnswer(transcript, lastAiQ, userIdx);  } catch (error) {
+
+//     console.error("Voice error:", error);
+//     setIsSpeaking(false);
+//   } finally {
+//     setIsLoading(false);
+//   }
+// };
+  const stopListeningAndSend = () => {
+  const SpeechRecognition =
+    (window as any).SpeechRecognition ||
+    (window as any).webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert("Chrome browser use karo — Safari/Firefox mein Speech API nahi hoti.");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;      // ← continuous OFF — mobile ke liye
+  recognition.interimResults = true;
+  recognition.lang = voiceAccent === "hindi" ? "hi-IN" : "en-IN";
+
+  startTimeRef.current = Date.now();
+  wordCountRef.current = 0;
+  let finalTranscript = "";
+
+  recognition.onstart = () => {
+    setIsListening(true);
+    setTranscript("");
+    finalTranscript = "";
+  };
+
+  recognition.onresult = (event: any) => {
+    let interim = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const text = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += text + " ";
+        wordCountRef.current += text.trim().split(/\s+/).length;
+      } else {
+        interim += text;
+      }
+    }
+
+    const display = finalTranscript + interim;
+    setTranscript(display);
+
+    // Live WPM
+    const elapsed = (Date.now() - startTimeRef.current) / 60000;
+    if (elapsed > 0) setLiveWPM(Math.round(wordCountRef.current / elapsed));
+
+    // Filler words
+    const words = display.toLowerCase().split(/\s+/);
+    const fillers = words.filter(w => FILLER_WORDS.includes(w));
+    setFillerCount(fillers.length);
+  };
+
+  recognition.onerror = (event: any) => {
+    console.error("Speech error:", event.error);
+    setIsListening(false);
+    if (event.error === "not-allowed") {
+      alert("Microphone permission do! Browser settings mein jaao → Microphone → Allow");
+    }
+  };
+
+  // ← YAHI KEY FIX HAI — onend pe automatically submit
+  recognition.onend = () => {
+    setIsListening(false);
+    if (finalTranscript.trim().length > 3) {
+      // Auto submit when recording stops
+      submitVoiceAnswer(finalTranscript.trim());
+    }
+  };
+
+  recognitionRef.current = recognition;
+  recognition.start();
+};
+
+// ← ALAG FUNCTION — submit logic yahan
+const submitVoiceAnswer = async (text: string) => {
+  if (!text.trim() || isLoading) return;
+
+  setIsLoading(true);
+  setTranscript(text);
+
+  try {
+    const response = await fetch(
+      "https://unicorn-backend-3.onrender.com/api/voice-interview",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: text,
+          job_role: jobRole,
+          interview_type: interviewType,
+          conversation: conversation.slice(-6),
+          resume_data: resumeData || {},
+          accent: voiceAccent,
+        }),
+      }
+    );
+
+    if (!response.ok) throw new Error("Backend error");
     const data = await response.json();
+    const aiReply = data.reply;
 
-
-    const aiReply = data.reply;    // Update conversation
-
-    const userMsg: ScoredMessage = { role: "user", content: transcript };
+    const userMsg: ScoredMessage = { role: "user", content: text };
     const aiMsg: ScoredMessage = { role: "assistant", content: aiReply };
     setConversation(prev => [...prev, userMsg, aiMsg]);
+    setTranscript("");
 
-    setTranscript("");    // 2. Get TTS audio
-
+    // TTS
     setIsSpeaking(true);
-    const ttsResponse = await fetch("https://unicorn-backend-3.onrender.com/api/tts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: aiReply, accent: voiceAccent }),
+    const ttsResponse = await fetch(
+      "https://unicorn-backend-3.onrender.com/api/tts",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: aiReply, accent: voiceAccent }),
+      }
+    );
 
-    });    const ttsData = await ttsResponse.json();
+    if (ttsResponse.ok) {
+      const ttsData = await ttsResponse.json();
+      const audioSrc = `data:audio/mp3;base64,${ttsData.audio_base64}`;
+      if (audioRef.current) {
+        audioRef.current.src = audioSrc;
+        audioRef.current.play();
+        audioRef.current.onended = () => {
+          setIsSpeaking(false);
+        };
+      }
+    } else {
+      setIsSpeaking(false);
+    }
 
-
-    const audioSrc = `data:audio/mp3;base64,${ttsData.audio_base64}`;    if (audioRef.current) {
-
-      audioRef.current.src = audioSrc;
-      audioRef.current.play();
-      audioRef.current.onended = () => setIsSpeaking(false);
-
-    }    // Score the answer
-
-    const lastAiQ = conversation.filter(m => m.role === "assistant").slice(-1)[0]?.content || "";
+    // Score answer
+    const lastAiQ = conversation
+      .filter(m => m.role === "assistant")
+      .slice(-1)[0]?.content || "";
     const userIdx = conversation.length;
+    scoreUserAnswer(text, lastAiQ, userIdx);
 
-    scoreUserAnswer(transcript, lastAiQ, userIdx);  } catch (error) {
-
-    console.error("Voice error:", error);
+  } catch (error) {
+    console.error("Voice submit error:", error);
     setIsSpeaking(false);
   } finally {
     setIsLoading(false);
+  }
+};
+
+// ← Button click handler — simple toggle
+const handleMicClick = () => {
+  if (isListening) {
+    // Manual stop → onend automatically calls submitVoiceAnswer
+    recognitionRef.current?.stop();
+  } else {
+    stopListeningAndSend();
   }
 };
   const generatePrepPack = async () => {
@@ -819,7 +973,7 @@ function InterviewContent() {
             
                 {/* Mic button */}
                 <button
-                  onClick={isListening ? stopListeningAndSend : startListening}
+                  onClick={handleMicClick}
                   disabled={isSpeaking || isLoading}
                   style={{
                     width: "80px", height: "80px", borderRadius: "50%",
