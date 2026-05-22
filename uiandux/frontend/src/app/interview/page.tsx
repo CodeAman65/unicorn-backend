@@ -411,18 +411,18 @@ const startListening = () => {
   }
 
   const recognition = new SpeechRecognition();
-  recognition.continuous = false;      // ← continuous OFF — mobile ke liye
+  recognition.continuous = true;      // ← continuous OFF — mobile ke liye
   recognition.interimResults = true;
-  recognition.lang = voiceAccent === "hindi" ? "hi-IN" : "en-IN";
+  recognition.lang = voiceAccent === "hindi" ? "hi-IN" : "en-US";
 
   startTimeRef.current = Date.now();
   wordCountRef.current = 0;
-  let finalTranscript = "";
+  const accumulatedRef = { value: "" };
 
   recognition.onstart = () => {
     setIsListening(true);
     setTranscript("");
-    finalTranscript = "";
+    accumulatedRef.value = "";
   };
 
   recognition.onresult = (event: any) => {
@@ -430,14 +430,14 @@ const startListening = () => {
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const text = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
-        finalTranscript += text + " ";
+        accumulatedRef.value += text + " ";
         wordCountRef.current += text.trim().split(/\s+/).length;
       } else {
         interim += text;
       }
     }
 
-    const display = finalTranscript + interim;
+    const display = accumulatedRef.value + interim;
     setTranscript(display);
 
     // Live WPM
@@ -461,14 +461,21 @@ const startListening = () => {
   // ← YAHI KEY FIX HAI — onend pe automatically submit
   recognition.onend = () => {
     setIsListening(false);
-    if (finalTranscript.trim().length > 3) {
+    if (accumulatedRef.value.trim().length > 3) {
       // Auto submit when recording stops
-      submitVoiceAnswer(finalTranscript.trim());
+      submitVoiceAnswer(accumulatedRef.value.trim());
     }
   };
 
   recognitionRef.current = recognition;
-  recognition.start();
+
+  // recognition.start();
+    try {
+    recognition.start();
+  } catch (err) {
+    console.error("Recognition start failed:", err);
+    alert("Mic start nahi hua. Page reload karo aur dobara try karo.");
+  }
 };
 
 // ← ALAG FUNCTION — submit logic yahan
@@ -545,14 +552,34 @@ const submitVoiceAnswer = async (text: string) => {
 };
 
 // ← Button click handler — simple toggle
-const handleMicClick = () => {
-  if (isListening) {
-    // Manual stop → onend automatically calls submitVoiceAnswer
-    recognitionRef.current?.stop();
-  } else {
-    startListening();
-  }
-};
+// const handleMicClick = () => {
+//   if (isListening) {
+//     // Manual stop → onend automatically calls submitVoiceAnswer
+//     recognitionRef.current?.stop();
+//   } else {
+//     startListening();
+//   }
+// };
+  const handleMicClick = () => {
+    // ← Check karo mic actually available hai
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Yeh browser mic support nahi karta.");
+      return;
+    }
+  
+    // ← Explicit permission request — bina iske Chrome block karta hai
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(() => {
+        if (isListening) {
+          recognitionRef.current?.stop();
+        } else {
+          startListening();
+        }
+      })
+      .catch((err) => {
+        alert("Mic permission denied: " + err.message);
+      });
+  };
   const generatePrepPack = async () => {
   if (!companyInput.trim()) {
     alert("Company name likho pehle!");
