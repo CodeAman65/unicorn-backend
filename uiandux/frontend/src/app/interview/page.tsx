@@ -149,7 +149,7 @@ function InterviewContent() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/interview",
+        "https://unicorn-backend-3.onrender.com/api/interview",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -212,7 +212,7 @@ function InterviewContent() {
 
   try {
     const [scoreResponse, qualityResponse] = await Promise.all([
-      fetch("http://127.0.0.1:8000/api/score-answer", {
+      fetch("https://unicorn-backend-3.onrender.com/api/score-answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -221,7 +221,7 @@ function InterviewContent() {
           job_role: jobRole,
         }),
       }),
-      fetch("http://127.0.0.1:8000/api/quality-feedback", {
+      fetch("https://unicorn-backend-3.onrender.com/api/quality-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -273,7 +273,7 @@ function InterviewContent() {
   setIsPrepLoading(true);
   try {
     const response = await fetch(
-      "http://127.0.0.1:8000/prep-pack",
+      "https://unicorn-backend-3.onrender.com/prep-pack",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -818,87 +818,6 @@ export default function InterviewPage() {
     </Suspense>
   );
 }
-// function StarScoreCard({ score }: { score: StarScore }) {
-//   const [showIdeal, setShowIdeal] = useState(false);
-
-//   const verdictColor = {
-//     Excellent: { bg: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", text: "#34d399" },
-//     Good: { bg: "rgba(99,102,241,0.1)", border: "rgba(99,102,241,0.3)", text: "#a78bfa" },
-//     Average: { bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)", text: "#fbbf24" },
-//     "Needs Work": { bg: "rgba(239,68,68,0.1)", border: "rgba(239,68,68,0.3)", text: "#f87171" },
-//   }[score.verdict];
-
-//   const starKeys = ["situation", "task", "action", "result"] as const;
-//   const starLabels = { situation: "S — Situation", task: "T — Task", action: "A — Action", result: "R — Result" };
-
-//   return (
-//     <div style={{ marginTop: "10px", background: "rgba(5,3,15,0.8)", border: `1px solid ${verdictColor.border}`, borderRadius: "14px", padding: "16px", fontSize: "13px" }}>
-      
-//       {/* Header */}
-//       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-//         <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-//           ⭐ STAR Score
-//         </span>
-//         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-//           <span style={{ color: verdictColor.text, fontWeight: 700, fontSize: "11px", background: verdictColor.bg, padding: "3px 10px", borderRadius: "999px", border: `1px solid ${verdictColor.border}` }}>
-//             {score.verdict}
-//           </span>
-//           <span style={{ fontSize: "22px", fontWeight: 800, color: verdictColor.text }}>
-//             {score.total_score}<span style={{ fontSize: "13px", color: "rgba(255,255,255,0.3)" }}>/100</span>
-//           </span>
-//         </div>
-//       </div>
-
-//       {/* Score bars */}
-//       <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "14px" }}>
-//         {starKeys.map((key) => {
-//           const item = score.breakdown[key];
-//           const pct = (item.score / item.max) * 100;
-//           const barColor = pct >= 80 ? "#34d399" : pct >= 60 ? "#a78bfa" : pct >= 40 ? "#fbbf24" : "#f87171";
-//           return (
-//             <div key={key}>
-//               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-//                 <span style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>{starLabels[key]}</span>
-//                 <span style={{ fontSize: "11px", fontWeight: 700, color: barColor }}>{item.score}/{item.max}</span>
-//               </div>
-//               <div style={{ height: "5px", background: "rgba(255,255,255,0.06)", borderRadius: "99px", overflow: "hidden", marginBottom: "4px" }}>
-//                 <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: "99px", transition: "width 0.8s ease" }} />
-//               </div>
-//               <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", margin: 0 }}>{item.feedback}</p>
-//             </div>
-//           );
-//         })}
-//       </div>
-
-//       {/* Weak areas */}
-//       {score.weak_areas.length > 0 && (
-//         <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "10px", padding: "10px 12px", marginBottom: "12px" }}>
-//           <p style={{ fontSize: "11px", fontWeight: 700, color: "#fbbf24", marginBottom: "6px" }}>⚠ Improve karo:</p>
-//           {score.weak_areas.map((area, i) => (
-//             <p key={i} style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", margin: "2px 0" }}>• {area}</p>
-//           ))}
-//         </div>
-//       )}
-
-//       {/* Ideal answer toggle */}
-//       <button
-//         onClick={() => setShowIdeal(!showIdeal)}
-//         style={{ width: "100%", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "8px", padding: "8px", color: "#a78bfa", fontSize: "11px", fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
-//         onMouseEnter={(e) => e.currentTarget.style.background = "rgba(167,139,250,0.15)"}
-//         onMouseLeave={(e) => e.currentTarget.style.background = "rgba(167,139,250,0.08)"}
-//       >
-//         {showIdeal ? "▲ Hide Ideal Answer" : "✦ Show Ideal Answer"}
-//       </button>
-
-//       {showIdeal && (
-//         <div style={{ marginTop: "10px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "10px", padding: "12px" }}>
-//           <p style={{ fontSize: "11px", fontWeight: 700, color: "#a78bfa", marginBottom: "8px" }}>💡 Ideal Answer:</p>
-//           <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: "1.7", margin: 0 }}>{score.ideal_answer}</p>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
 function StarScoreCard({ score, quality }: { score: StarScore; quality?: QualityFeedback }) {
   const [showIdeal, setShowIdeal] = useState(false);
   const [activeTab, setActiveTab] = useState<"star" | "quality">("star");
