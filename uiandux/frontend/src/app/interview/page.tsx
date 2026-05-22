@@ -288,7 +288,7 @@ function InterviewContent() {
     sendMessage(userInput);
   };
 
-  const FILLER_WORDS = ["um", "uh", "basically", "you know", "like", "so", "actually", "literally", "kind of", "sort of"];  const startListening = () => {
+  const FILLER_WORDS = ["um", "uh", "basically", "you know", "like", "so", "actually", "literally", "kind of", "sort of"];  const startListening1= () => {
 
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -400,7 +400,7 @@ function InterviewContent() {
 //     setIsLoading(false);
 //   }
 // };
-  const stopListeningAndSend = () => {
+const startListening = () => {
   const SpeechRecognition =
     (window as any).SpeechRecognition ||
     (window as any).webkitSpeechRecognition;
@@ -550,7 +550,7 @@ const handleMicClick = () => {
     // Manual stop → onend automatically calls submitVoiceAnswer
     recognitionRef.current?.stop();
   } else {
-    stopListeningAndSend();
+    startListening();
   }
 };
   const generatePrepPack = async () => {
