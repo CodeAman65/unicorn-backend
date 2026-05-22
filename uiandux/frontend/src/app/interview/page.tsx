@@ -8,6 +8,39 @@ interface Message {
   role: "user" | "assistant";
   content: string;
 }
+interface PrepQuestion {
+  question: string;
+  category?: string;
+  difficulty?: string;
+  tip?: string;
+  framework?: string;
+  focus_area?: string;
+}
+
+interface PrepPack {
+  company: string;
+  role: string;
+  culture: {
+    summary: string;
+    values: string[];
+    work_style: string;
+  };
+  interview_process: {
+    rounds: { round: string; description: string; duration: string }[];
+    total_rounds: string;
+    timeline: string;
+  };
+  technical_questions: PrepQuestion[];
+  behavioral_questions: PrepQuestion[];
+  company_specific_tips: string[];
+  key_technologies: string[];
+  red_flags_to_avoid: string[];
+  preparation_timeline: {
+    week1: string;
+    week2: string;
+    week3: string;
+  };
+}
 
 function InterviewContent() {
   const router = useRouter();
@@ -23,6 +56,13 @@ function InterviewContent() {
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Prep Pack states
+  const [showPrepPack, setShowPrepPack] = useState(false);
+  const [companyInput, setCompanyInput] = useState("");
+  const [prepPack, setPrepPack] = useState<PrepPack | null>(null);
+  const [isPrepLoading, setIsPrepLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"interview" | "prep">("interview");
+  const [prepActiveSection, setPrepActiveSection] = useState("culture");  
 
   // Page load hone pe localStorage se resume data lo
   useEffect(() => {
@@ -110,6 +150,36 @@ function InterviewContent() {
     if (!userInput.trim() || isLoading) return;
     sendMessage(userInput);
   };
+  const generatePrepPack = async () => {
+  if (!companyInput.trim()) {
+    alert("Company name likho pehle!");
+    return;
+  }
+  setIsPrepLoading(true);
+  try {
+    const response = await fetch(
+      "https://unicorn-backend-3.onrender.com/api/prep-pack",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_role: manualRole || jobRole || "Software Engineer",
+          company: companyInput.trim(),
+          resume_data: resumeData || {},
+        }),
+      }
+    );
+    if (!response.ok) throw new Error("Backend error!");
+    const data = await response.json();
+    setPrepPack(data);
+    setShowPrepPack(true);
+  } catch (error) {
+    console.error("Prep pack error:", error);
+    alert("Prep pack generate nahi hua. Retry karo!");
+  } finally {
+    setIsPrepLoading(false);
+  }
+};
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -171,6 +241,29 @@ function InterviewContent() {
                 <span style={{ fontSize: "12px", color: "#34d399", fontWeight: 600 }}>Live Interview</span>
               </div>
             )}
+            {/* Tab Toggle */}
+          <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "999px", padding: "4px", gap: "4px" }}>
+            <button
+              onClick={() => setActiveTab("interview")}
+              style={{
+                padding: "6px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 600,
+                border: "none", cursor: "pointer", transition: "all 0.2s",
+                background: activeTab === "interview" ? "#fff" : "transparent",
+                color: activeTab === "interview" ? "#030014" : "rgba(255,255,255,0.5)",
+              }}>
+              🎤 Interview
+            </button>
+            <button
+              onClick={() => setActiveTab("prep")}
+              style={{
+                padding: "6px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 600,
+                border: "none", cursor: "pointer", transition: "all 0.2s",
+                background: activeTab === "prep" ? "#a78bfa" : "transparent",
+                color: activeTab === "prep" ? "#fff" : "rgba(255,255,255,0.5)",
+              }}>
+              🏢 Prep Pack
+            </button>
+          </div>
             <button onClick={() => router.push("/")}
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "999px", padding: "8px 18px", color: "rgba(255,255,255,0.6)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
               ← Back
@@ -179,150 +272,372 @@ function InterviewContent() {
         </nav>
 
         {/* MAIN CONTENT */}
-        <div style={{ position: "relative", zIndex: 5, flex: 1, display: "flex", flexDirection: "column", maxWidth: "820px", width: "100%", margin: "0 auto", padding: "24px 20px", gap: "20px" }}>
+<div style={{ position: "relative", zIndex: 5, flex: 1, display: "flex", flexDirection: "column", maxWidth: "820px", width: "100%", margin: "0 auto", padding: "24px 20px", gap: "20px" }}>
 
-          {/* PRE-START SCREEN */}
-          {!interviewStarted && (
-            <div style={{ background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "20px", padding: "36px", animation: "fadeInUp 0.4s ease" }}>
-              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "22px", fontWeight: 800, color: "#fff", marginBottom: "8px" }}>
-                Ready for your Mock Interview? 🎯
-              </h2>
-              <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)", marginBottom: "28px", lineHeight: "1.6" }}>
-                AI interviewer will ask role-specific questions using STAR method, follow up on your answers, and give you a real interview experience.
-              </p>
+  {activeTab === "interview" ? (
+    <>
+      {/* PRE-START SCREEN */}
+      {!interviewStarted && (
+        <div style={{ background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "20px", padding: "36px", animation: "fadeInUp 0.4s ease" }}>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "22px", fontWeight: 800, color: "#fff", marginBottom: "8px" }}>
+            Ready for your Mock Interview? 🎯
+          </h2>
+          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)", marginBottom: "28px", lineHeight: "1.6" }}>
+            AI interviewer will ask role-specific questions using STAR method, follow up on your answers, and give you a real interview experience.
+          </p>
 
-              {/* Auto-detected role */}
-              {jobRole && (
-                <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "12px", padding: "12px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{ fontSize: "18px" }}>✅</span>
-                  <div>
-                    <p style={{ fontSize: "11px", color: "rgba(16,185,129,0.7)", fontWeight: 600, marginBottom: "2px" }}>AUTO-DETECTED FROM RESUME</p>
-                    <p style={{ fontSize: "14px", color: "#fff", fontWeight: 600 }}>{jobRole}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Manual override */}
-              <div style={{ marginBottom: "24px" }}>
-                <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", fontWeight: 600, display: "block", marginBottom: "8px" }}>
-                  {jobRole ? "Ya apna role manually likho (optional override):" : "Job role likho:"}
-                </label>
-                <input
-                  type="text"
-                  value={manualRole}
-                  onChange={(e) => setManualRole(e.target.value)}
-                  placeholder="e.g. Full Stack Developer, React Developer, Data Analyst..."
-                  style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: "14px", outline: "none" }}
-                  onFocus={(e) => e.target.style.borderColor = "rgba(167,139,250,0.4)"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
-                />
+          {/* Auto-detected role */}
+          {jobRole && (
+            <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "12px", padding: "12px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "18px" }}>✅</span>
+              <div>
+                <p style={{ fontSize: "11px", color: "rgba(16,185,129,0.7)", fontWeight: 600, marginBottom: "2px" }}>AUTO-DETECTED FROM RESUME</p>
+                <p style={{ fontSize: "14px", color: "#fff", fontWeight: 600 }}>{jobRole}</p>
               </div>
-
-              {/* What to expect */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "28px" }}>
-                {[
-                  { icon: "🧠", text: "STAR method questions" },
-                  { icon: "🔄", text: "Dynamic follow-ups" },
-                  { icon: "💼", text: "Resume-based questions" },
-                  { icon: "📊", text: "Behavioral + Technical mix" },
-                ].map((item, i) => (
-                  <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "10px", padding: "10px 14px", display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "18px" }}>{item.icon}</span>
-                    <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>{item.text}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button onClick={startInterview} disabled={isLoading}
-                style={{ width: "100%", height: "52px", borderRadius: "999px", background: "#fff", color: "#030014", fontWeight: 800, fontSize: "15px", border: "none", cursor: "pointer", transition: "all 0.2s", opacity: isLoading ? 0.7 : 1 }}>
-                {isLoading ? "Starting..." : "🎤 Start Interview"}
-              </button>
             </div>
           )}
 
-          {/* CHAT AREA */}
-          {interviewStarted && (
-            <>
-              {/* Role badge */}
-              <div style={{ textAlign: "center" }}>
-                <span style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "999px", padding: "6px 16px", fontSize: "12px", color: "#a78bfa", fontWeight: 600 }}>
-                  Interviewing for: {jobRole}
-                </span>
+          {/* Manual override */}
+          <div style={{ marginBottom: "24px" }}>
+            <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", fontWeight: 600, display: "block", marginBottom: "8px" }}>
+              {jobRole ? "Ya apna role manually likho (optional override):" : "Job role likho:"}
+            </label>
+            <input
+              type="text"
+              value={manualRole}
+              onChange={(e) => setManualRole(e.target.value)}
+              placeholder="e.g. Full Stack Developer, React Developer, Data Analyst..."
+              style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: "14px", outline: "none" }}
+              onFocus={(e) => e.target.style.borderColor = "rgba(167,139,250,0.4)"}
+              onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+            />
+          </div>
+
+          {/* What to expect */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "28px" }}>
+            {[
+              { icon: "🧠", text: "STAR method questions" },
+              { icon: "🔄", text: "Dynamic follow-ups" },
+              { icon: "💼", text: "Resume-based questions" },
+              { icon: "📊", text: "Behavioral + Technical mix" },
+            ].map((item, i) => (
+              <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "10px", padding: "10px 14px", display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "18px" }}>{item.icon}</span>
+                <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>{item.text}</span>
               </div>
+            ))}
+          </div>
 
-              {/* Messages */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "16px", minHeight: "400px" }}>
-                {conversation
-                  .filter((msg) => msg.content !== "Hello, I'm ready to start the interview.")
-                  .map((msg, i) => (
-                    <div key={i} className="msg-bubble" style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
-                      {msg.role === "assistant" && (
-                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #a78bfa, #06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "10px", flexShrink: 0, marginTop: "4px" }}>
-                          <span style={{ fontSize: "14px" }}>🤖</span>
-                        </div>
-                      )}
-                      <div style={{
-                        maxWidth: "75%",
-                        padding: "14px 18px",
-                        borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                        background: msg.role === "user" ? "rgba(167,139,250,0.15)" : "rgba(10,7,24,0.7)",
-                        border: msg.role === "user" ? "1px solid rgba(167,139,250,0.25)" : "1px solid rgba(255,255,255,0.07)",
-                        fontSize: "14px",
-                        color: "#f1f5f9",
-                        lineHeight: "1.65",
-                        whiteSpace: "pre-wrap"
-                      }}>
-                        {msg.content}
-                      </div>
-                      {msg.role === "user" && (
-                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "10px", flexShrink: 0, marginTop: "4px" }}>
-                          <span style={{ fontSize: "14px" }}>👤</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+          <button onClick={startInterview} disabled={isLoading}
+            style={{ width: "100%", height: "52px", borderRadius: "999px", background: "#fff", color: "#030014", fontWeight: 800, fontSize: "15px", border: "none", cursor: "pointer", transition: "all 0.2s", opacity: isLoading ? 0.7 : 1 }}>
+            {isLoading ? "Starting..." : "🎤 Start Interview"}
+          </button>
+        </div>
+      )}
 
-                {/* Typing indicator */}
-                {isTyping && (
-                  <div className="msg-bubble" style={{ display: "flex", alignItems: "flex-start" }}>
-                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #a78bfa, #06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "10px", flexShrink: 0 }}>
+      {/* CHAT AREA */}
+      {interviewStarted && (
+        <>
+          {/* Role badge */}
+          <div style={{ textAlign: "center" }}>
+            <span style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "999px", padding: "6px 16px", fontSize: "12px", color: "#a78bfa", fontWeight: 600 }}>
+              Interviewing for: {jobRole}
+            </span>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "16px", minHeight: "400px" }}>
+            {conversation
+              .filter((msg) => msg.content !== "Hello, I'm ready to start the interview.")
+              .map((msg, i) => (
+                <div key={i} className="msg-bubble" style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                  {msg.role === "assistant" && (
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #a78bfa, #06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "10px", flexShrink: 0, marginTop: "4px" }}>
                       <span style={{ fontSize: "14px" }}>🤖</span>
                     </div>
-                    <div style={{ padding: "14px 18px", borderRadius: "18px 18px 18px 4px", background: "rgba(10,7,24,0.7)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", gap: "2px" }}>
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
+                  )}
+                  <div style={{
+                    maxWidth: "75%",
+                    padding: "14px 18px",
+                    borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                    background: msg.role === "user" ? "rgba(167,139,250,0.15)" : "rgba(10,7,24,0.7)",
+                    border: msg.role === "user" ? "1px solid rgba(167,139,250,0.25)" : "1px solid rgba(255,255,255,0.07)",
+                    fontSize: "14px",
+                    color: "#f1f5f9",
+                    lineHeight: "1.65",
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {msg.content}
+                  </div>
+                  {msg.role === "user" && (
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "10px", flexShrink: 0, marginTop: "4px" }}>
+                      <span style={{ fontSize: "14px" }}>👤</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+            {/* Typing indicator */}
+            {isTyping && (
+              <div className="msg-bubble" style={{ display: "flex", alignItems: "flex-start" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #a78bfa, #06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "10px", flexShrink: 0 }}>
+                  <span style={{ fontSize: "14px" }}>🤖</span>
+                </div>
+                <div style={{ padding: "14px 18px", borderRadius: "18px 18px 18px 4px", background: "rgba(10,7,24,0.7)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", gap: "2px" }}>
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Input box */}
+          <div style={{ background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "16px", display: "flex", gap: "12px", alignItems: "flex-end" }}>
+            <textarea
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter your answer here... (Enter to send, Shift+Enter for new line)"
+              disabled={isLoading}
+              rows={3}
+              style={{ flex: 1, background: "transparent", border: "none", color: "#f1f5f9", fontSize: "14px", resize: "none", lineHeight: "1.6", outline: "none", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={isLoading || !userInput.trim()}
+              className="send-btn"
+              style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(167,139,250,0.8)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  ) : (
+    /* ===================== PREP PACK TAB ===================== */
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      {/* Company Input Card */}
+      {!showPrepPack && (
+        <div style={{ background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "20px", padding: "36px", animation: "fadeInUp 0.4s ease" }}>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "22px", fontWeight: 800, color: "#fff", marginBottom: "8px" }}>
+            Company-Specific Prep Pack 🏢
+          </h2>
+          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)", marginBottom: "28px", lineHeight: "1.6" }}>
+            Enter company name — AI will generate culture insights, interview process, real questions, and insider tips tailored to your role.
+          </p>
+
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", fontWeight: 600, display: "block", marginBottom: "8px" }}>Company Name</label>
+            <input
+              type="text"
+              value={companyInput}
+              onChange={(e) => setCompanyInput(e.target.value)}
+              placeholder="e.g. Google, Microsoft, Flipkart, Swiggy, TCS..."
+              onKeyDown={(e) => e.key === "Enter" && generatePrepPack()}
+              style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: "14px", outline: "none" }}
+              onFocus={(e) => e.target.style.borderColor = "rgba(167,139,250,0.4)"}
+              onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+            />
+          </div>
+
+          {(manualRole || jobRole) && (
+            <div style={{ background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "10px", padding: "10px 14px", marginBottom: "20px", fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>
+              🎯 Role: <strong style={{ color: "#a78bfa" }}>{manualRole || jobRole}</strong>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "28px" }}>
+            {[
+              { icon: "🏛️", text: "Company culture & values" },
+              { icon: "🔄", text: "Exact interview process" },
+              { icon: "💡", text: "Real question patterns" },
+              { icon: "⚡", text: "Insider tips & red flags" },
+            ].map((item, i) => (
+              <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "10px", padding: "10px 14px", display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "18px" }}>{item.icon}</span>
+                <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>{item.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={generatePrepPack} disabled={isPrepLoading || !companyInput.trim()}
+            style={{ width: "100%", height: "52px", borderRadius: "999px", background: isPrepLoading ? "rgba(167,139,250,0.4)" : "#a78bfa", color: "#fff", fontWeight: 800, fontSize: "15px", border: "none", cursor: isPrepLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+            {isPrepLoading ? "⚡ Generating Prep Pack..." : "🚀 Generate Prep Pack"}
+          </button>
+        </div>
+      )}
+
+      {/* PREP PACK RESULT */}
+      {showPrepPack && prepPack && (
+        <div style={{ animation: "fadeInUp 0.4s ease" }}>
+
+          {/* Header */}
+          <div style={{ background: "linear-gradient(135deg, rgba(167,139,250,0.15), rgba(6,182,212,0.1))", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "16px", padding: "20px 24px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "20px", fontWeight: 800, color: "#fff", marginBottom: "4px" }}>
+                {prepPack.company} — {prepPack.role}
+              </h2>
+              <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
+                {prepPack.interview_process.total_rounds} • {prepPack.interview_process.timeline}
+              </p>
+            </div>
+            <button onClick={() => { setShowPrepPack(false); setCompanyInput(""); setPrepPack(null); }}
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", padding: "8px 14px", color: "rgba(255,255,255,0.6)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+              🔄 New Search
+            </button>
+          </div>
+
+          {/* Section Tabs */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+            {[
+              { id: "culture", label: "🏛️ Culture" },
+              { id: "process", label: "🔄 Process" },
+              { id: "technical", label: "💻 Technical" },
+              { id: "behavioral", label: "🧠 Behavioral" },
+              { id: "tips", label: "⚡ Tips" },
+              { id: "timeline", label: "📅 Timeline" },
+            ].map((tab) => (
+              <button key={tab.id} onClick={() => setPrepActiveSection(tab.id)}
+                style={{
+                  padding: "8px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 600,
+                  border: "1px solid", cursor: "pointer", transition: "all 0.2s",
+                  background: prepActiveSection === tab.id ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.03)",
+                  borderColor: prepActiveSection === tab.id ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)",
+                  color: prepActiveSection === tab.id ? "#a78bfa" : "rgba(255,255,255,0.5)",
+                }}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Section Content */}
+          <div style={{ background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "24px" }}>
+
+            {/* CULTURE */}
+            {prepActiveSection === "culture" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.7)", lineHeight: "1.7" }}>{prepPack.culture.summary}</p>
+                <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", lineHeight: "1.6" }}>{prepPack.culture.work_style}</p>
+                <div>
+                  <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontWeight: 700, marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>Core Values</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {prepPack.culture.values.map((v, i) => (
+                      <span key={i} style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "999px", padding: "6px 14px", fontSize: "12px", color: "#a78bfa", fontWeight: 600 }}>{v}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontWeight: 700, marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>Key Technologies</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {prepPack.key_technologies.map((t, i) => (
+                      <span key={i} style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.2)", borderRadius: "999px", padding: "6px 14px", fontSize: "12px", color: "#06b6d4", fontWeight: 600 }}>{t}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PROCESS */}
+            {prepActiveSection === "process" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {prepPack.interview_process.rounds.map((r, i) => (
+                  <div key={i} style={{ display: "flex", gap: "16px", alignItems: "flex-start", padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "rgba(167,139,250,0.2)", border: "1px solid rgba(167,139,250,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: "13px", fontWeight: 800, color: "#a78bfa" }}>{i + 1}</span>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                        <p style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>{r.round}</p>
+                        <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.05)", padding: "3px 10px", borderRadius: "999px" }}>{r.duration}</span>
+                      </div>
+                      <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", lineHeight: "1.6" }}>{r.description}</p>
                     </div>
                   </div>
-                )}
-                <div ref={bottomRef} />
+                ))}
               </div>
+            )}
 
-              {/* Input box */}
-              <div style={{ background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "16px", display: "flex", gap: "12px", alignItems: "flex-end" }}>
-                <textarea
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Enter your answer here... (Enter to send, Shift+Enter for new line)"
-                  disabled={isLoading}
-                  rows={3}
-                  style={{ flex: 1, background: "transparent", border: "none", color: "#f1f5f9", fontSize: "14px", resize: "none", lineHeight: "1.6", outline: "none", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                />
-                <button
-                  onClick={handleSubmit}
-                  disabled={isLoading || !userInput.trim()}
-                  className="send-btn"
-                  style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(167,139,250,0.8)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
-                </button>
+            {/* TECHNICAL */}
+            {prepActiveSection === "technical" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {prepPack.technical_questions.map((q, i) => (
+                  <div key={i} style={{ padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "8px", flexWrap: "wrap" }}>
+                      {q.category && <span style={{ fontSize: "11px", background: "rgba(6,182,212,0.1)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.2)", padding: "3px 10px", borderRadius: "999px", fontWeight: 600 }}>{q.category}</span>}
+                      {q.difficulty && <span style={{ fontSize: "11px", background: q.difficulty === "Hard" ? "rgba(239,68,68,0.1)" : q.difficulty === "Medium" ? "rgba(245,158,11,0.1)" : "rgba(16,185,129,0.1)", color: q.difficulty === "Hard" ? "#ef4444" : q.difficulty === "Medium" ? "#f59e0b" : "#10b981", border: `1px solid ${q.difficulty === "Hard" ? "rgba(239,68,68,0.2)" : q.difficulty === "Medium" ? "rgba(245,158,11,0.2)" : "rgba(16,185,129,0.2)"}`, padding: "3px 10px", borderRadius: "999px", fontWeight: 600 }}>{q.difficulty}</span>}
+                    </div>
+                    <p style={{ fontSize: "14px", color: "#f1f5f9", fontWeight: 600, marginBottom: "8px", lineHeight: "1.5" }}>{q.question}</p>
+                    {q.tip && <p style={{ fontSize: "12px", color: "rgba(167,139,250,0.7)", lineHeight: "1.6" }}>💡 {q.tip}</p>}
+                  </div>
+                ))}
               </div>
-            </>
-          )}
+            )}
+
+            {/* BEHAVIORAL */}
+            {prepActiveSection === "behavioral" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {prepPack.behavioral_questions.map((q, i) => (
+                  <div key={i} style={{ padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    {q.focus_area && <span style={{ fontSize: "11px", background: "rgba(167,139,250,0.1)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.2)", padding: "3px 10px", borderRadius: "999px", fontWeight: 600, display: "inline-block", marginBottom: "8px" }}>{q.focus_area}</span>}
+                    <p style={{ fontSize: "14px", color: "#f1f5f9", fontWeight: 600, lineHeight: "1.5" }}>{q.question}</p>
+                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "6px" }}>Use STAR method: Situation → Task → Action → Result</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* TIPS */}
+            {prepActiveSection === "tips" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div>
+                  <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontWeight: 700, marginBottom: "12px", textTransform: "uppercase", letterSpacing: "1px" }}>✅ Insider Tips</p>
+                  {prepPack.company_specific_tips.map((tip, i) => (
+                    <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", padding: "12px 0", borderBottom: i < prepPack.company_specific_tips.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                      <span style={{ color: "#10b981", fontSize: "16px", marginTop: "1px" }}>→</span>
+                      <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", lineHeight: "1.6" }}>{tip}</p>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: "8px" }}>
+                  <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontWeight: 700, marginBottom: "12px", textTransform: "uppercase", letterSpacing: "1px" }}>🚫 Red Flags to Avoid</p>
+                  {prepPack.red_flags_to_avoid.map((flag, i) => (
+                    <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", padding: "12px 0", borderBottom: i < prepPack.red_flags_to_avoid.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                      <span style={{ color: "#ef4444", fontSize: "16px", marginTop: "1px" }}>✗</span>
+                      <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", lineHeight: "1.6" }}>{flag}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TIMELINE */}
+            {prepActiveSection === "timeline" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {[
+                  { week: "Week 1", content: prepPack.preparation_timeline.week1, color: "#10b981" },
+                  { week: "Week 2", content: prepPack.preparation_timeline.week2, color: "#a78bfa" },
+                  { week: "Week 3", content: prepPack.preparation_timeline.week3, color: "#06b6d4" },
+                ].map((w, i) => (
+                  <div key={i} style={{ padding: "20px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", border: `1px solid ${w.color}22`, borderLeft: `3px solid ${w.color}` }}>
+                    <p style={{ fontSize: "13px", fontWeight: 700, color: w.color, marginBottom: "8px" }}>{w.week}</p>
+                    <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", lineHeight: "1.6" }}>{w.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
         </div>
+      )}
+    </div>
+  )}
+</div>
       </div>
     </>
   );

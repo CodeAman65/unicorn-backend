@@ -417,6 +417,109 @@ Interview style: Professional but conversational. Make the candidate feel comfor
     except Exception as e:
         print(f"Interview Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Interview agent failed: {str(e)}")
+    
+# ==========================================
+# COMPANY PREP PACK ENDPOINT
+# ==========================================
+class PrepPackRequest(BaseModel):
+    job_role: str
+    company: str
+    resume_data: dict = {}
+
+@app.post("/api/prep-pack")
+async def prep_pack_endpoint(data: PrepPackRequest):
+    if not data.company or not data.job_role:
+        raise HTTPException(status_code=400, detail="Company aur job role dono required hain!")
+
+    try:
+        # Resume context
+        resume_context = ""
+        if data.resume_data:
+            resume_context = f"""
+Candidate Background:
+- Skills: {', '.join(data.resume_data.get('skills', []))}
+- Experience: {str(data.resume_data.get('experience', []))}
+- Projects: {str(data.resume_data.get('projects', []))}
+"""
+
+        system_prompt = """You are a world-class career coach and technical interview expert with deep knowledge of how top tech companies hire. You have insider knowledge of company cultures, interview formats, and hiring patterns.
+
+You create extremely detailed, actionable company-specific interview prep packs that feel like they were written by someone who has been through hundreds of interviews at that specific company.
+
+CRITICAL: Always respond in valid JSON format only. No markdown, no extra text."""
+
+        user_prompt = f"""Create a comprehensive interview prep pack for:
+Company: {data.company}
+Role: {data.job_role}
+{resume_context}
+
+Return EXACTLY this JSON structure:
+{{
+  "company": "{data.company}",
+  "role": "{data.job_role}",
+  "culture": {{
+    "summary": "2-3 sentence company culture summary",
+    "values": ["value1", "value2", "value3", "value4"],
+    "work_style": "Description of work environment and style"
+  }},
+  "interview_process": {{
+    "rounds": [
+      {{"round": "Round name", "description": "What happens in this round", "duration": "Duration"}}
+    ],
+    "total_rounds": "Number like 4-5 rounds",
+    "timeline": "Typical timeline like 2-3 weeks"
+  }},
+  "technical_questions": [
+    {{"question": "Question text", "category": "DSA/System Design/Frontend/Backend etc", "difficulty": "Easy/Medium/Hard", "tip": "How to approach this"}}
+  ],
+  "behavioral_questions": [
+    {{"question": "Question text", "framework": "STAR", "focus_area": "Leadership/Ownership/etc"}}
+  ],
+  "company_specific_tips": [
+    "Specific actionable tip 1",
+    "Specific actionable tip 2",
+    "Specific actionable tip 3",
+    "Specific actionable tip 4",
+    "Specific actionable tip 5"
+  ],
+  "key_technologies": ["tech1", "tech2", "tech3", "tech4", "tech5"],
+  "red_flags_to_avoid": ["mistake1", "mistake2", "mistake3"],
+  "preparation_timeline": {{
+    "week1": "What to focus on week 1",
+    "week2": "What to focus on week 2",
+    "week3": "What to focus on week 3"
+  }}
+}}
+
+Make it extremely specific to {data.company}. Include real interview patterns, actual question types they ask, and insider tips. Make technical_questions have 5 questions and behavioral_questions have 4 questions."""
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=3000,
+            temperature=0.7,
+        )
+
+        raw = response.choices[0].message.content.strip()
+
+        # Clean markdown if any
+        if raw.startswith("```"):
+            raw = raw.strip("`").strip()
+            if raw.startswith("json"):
+                raw = raw[4:].strip()
+
+        import json
+        prep_data = json.loads(raw)
+        return prep_data
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="AI ne invalid JSON diya, retry karo.")
+    except Exception as e:
+        print(f"Prep Pack Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Prep pack generation failed: {str(e)}")
 
 if __name__ == "__main__":
     print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")
