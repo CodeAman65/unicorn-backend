@@ -2,6 +2,7 @@
 
 import os
 import warnings
+import json
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 # from google import genai as genai_client
@@ -520,6 +521,79 @@ Make it extremely specific to {data.company}. Include real interview patterns, a
     except Exception as e:
         print(f"Prep Pack Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Prep pack generation failed: {str(e)}")
+    
+# ==========================================
+# STAR SCORER ENDPOINT
+# ==========================================
+class ScoreRequest(BaseModel):
+    question: str      # AI ne kya puchha tha
+    answer: str        # User ne kya jawab diya
+    job_role: str      # Kis role ke liye interview
+
+@app.post("/api/score-answer")
+async def score_answer_endpoint(data: ScoreRequest):
+    if not data.answer or not data.question:
+        raise HTTPException(status_code=400, detail="Question aur answer dono chahiye!")
+
+    try:
+        system_instruction = """You are an expert interview coach who scores answers using the STAR framework.
+
+STAR Framework:
+- Situation (0-25): Did they clearly describe the context/background?
+- Task (0-25): Did they explain their specific responsibility?
+- Action (0-25): Did they describe concrete steps they took?
+- Result (0-25): Did they quantify the outcome?
+
+You must respond in this EXACT JSON format (no markdown, no extra text):
+{
+  "total_score": 78,
+  "breakdown": {
+    "situation": {"score": 20, "max": 25, "feedback": "Good context but missing timeline"},
+    "task": {"score": 18, "max": 25, "feedback": "Role was clear"},
+    "action": {"score": 25, "max": 25, "feedback": "Excellent — specific steps mentioned"},
+    "result": {"score": 15, "max": 25, "feedback": "Result mentioned but not quantified"}
+  },
+  "weak_areas": ["Add specific numbers to your result", "Mention the timeline"],
+  "ideal_answer": "A complete rewritten version of their answer following perfect STAR format",
+  "verdict": "Good" 
+}
+
+verdict must be one of: "Excellent" (85-100), "Good" (65-84), "Average" (45-64), "Needs Work" (0-44)"""
+
+        user_content = f"""Job Role: {data.job_role}
+
+Interview Question: {data.question}
+
+Candidate's Answer: {data.answer}
+
+Score this answer on STAR framework and provide detailed feedback."""
+
+        groq_messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_content}
+        ]
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=groq_messages,
+            max_tokens=1500,
+            temperature=0.3
+        )
+
+        raw = response.choices[0].message.content.strip()
+
+        # Clean markdown agar ho
+        if raw.startswith("```"):
+            raw = raw.strip("```").strip("json").strip()
+
+        score_data = json.loads(raw)
+        return score_data
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Scoring failed — invalid JSON from AI")
+    except Exception as e:
+        print(f"Score Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")

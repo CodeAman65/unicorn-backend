@@ -8,6 +8,23 @@ interface Message {
   role: "user" | "assistant";
   content: string;
 }
+interface StarScore {
+  total_score: number;
+  breakdown: {
+    situation: { score: number; max: number; feedback: string };
+    task: { score: number; max: number; feedback: string };
+    action: { score: number; max: number; feedback: string };
+    result: { score: number; max: number; feedback: string };
+  };
+  weak_areas: string[];
+  ideal_answer: string;
+  verdict: "Excellent" | "Good" | "Average" | "Needs Work";
+}
+
+interface ScoredMessage extends Message {
+  score?: StarScore;
+  isScoring?: boolean;
+}
 interface PrepQuestion {
   question: string;
   category?: string;
@@ -50,7 +67,7 @@ function InterviewContent() {
   const [jobRole, setJobRole] = useState("");
   const [manualRole, setManualRole] = useState("");
   const [resumeData, setResumeData] = useState<any>(null);
-  const [conversation, setConversation] = useState<Message[]>([]);
+  const [conversation, setConversation] = useState<ScoredMessage []>([]);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [interviewStarted, setInterviewStarted] = useState(false);
@@ -132,6 +149,22 @@ function InterviewContent() {
 
       const aiMessage: Message = { role: "assistant", content: data.reply };
       setConversation([...updatedConversation, aiMessage]);
+      setConversation([...updatedConversation, aiMessage]);
+
+       // User ke answer ko score karo automatically
+       // Last user message ka index find karo
+       const userMsgIndex = updatedConversation.length - 1;
+       const lastAiQuestion = conversation
+         .filter((m) => m.role === "assistant")
+         .slice(-1)[0]?.content || "";
+           
+       if (updatedConversation[userMsgIndex]?.role === "user") {
+         scoreUserAnswer(
+           updatedConversation[userMsgIndex].content,
+           lastAiQuestion,
+           userMsgIndex
+         );
+       }
     } catch (error) {
       console.error("Interview error:", error);
       const errorMsg: Message = {
@@ -144,6 +177,63 @@ function InterviewContent() {
       setIsTyping(false);
     }
   };
+  const scoreUserAnswer = async (
+  userMessage: string,
+  aiQuestion: string,
+  messageIndex: number
+) => {
+  // Sirf score karo agar answer meaningful ho (10+ words)
+  const wordCount = userMessage.trim().split(/\s+/).length;
+  if (wordCount < 10) return;
+
+  // Scoring indicator dikhao
+  setConversation((prev) => {
+    const updated = [...prev];
+    if (updated[messageIndex]) {
+      updated[messageIndex] = { ...updated[messageIndex], isScoring: true };
+    }
+    return updated;
+  });
+
+  try {
+    const response = await fetch(
+      "https://unicorn-backend-3.onrender.com/api/score-answer",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: aiQuestion,
+          answer: userMessage,
+          job_role: jobRole,
+        }),
+      }
+    );
+
+    if (!response.ok) throw new Error("Scoring failed");
+    const scoreData: StarScore = await response.json();
+
+    setConversation((prev) => {
+      const updated = [...prev];
+      if (updated[messageIndex]) {
+        updated[messageIndex] = {
+          ...updated[messageIndex],
+          score: scoreData,
+          isScoring: false,
+        };
+      }
+      return updated;
+    });
+  } catch (error) {
+    console.error("Scoring error:", error);
+    setConversation((prev) => {
+      const updated = [...prev];
+      if (updated[messageIndex]) {
+        updated[messageIndex] = { ...updated[messageIndex], isScoring: false };
+      }
+      return updated;
+    });
+  }
+};
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,7 +248,7 @@ function InterviewContent() {
   setIsPrepLoading(true);
   try {
     const response = await fetch(
-      "https://unicorn-backend-3.onrender.com/api/prep-pack",
+      "https://unicorn-backend-3.onrender.com/prep-pack",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -201,6 +291,10 @@ function InterviewContent() {
         @keyframes typing {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
           30% { transform: translateY(-6px); opacity: 1; }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         @keyframes pulseBadge {
           0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
@@ -347,7 +441,7 @@ function InterviewContent() {
 
           {/* Messages */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "16px", minHeight: "400px" }}>
-            {conversation
+            {/* {conversation
               .filter((msg) => msg.content !== "Hello, I'm ready to start the interview.")
               .map((msg, i) => (
                 <div key={i} className="msg-bubble" style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
@@ -375,7 +469,56 @@ function InterviewContent() {
                     </div>
                   )}
                 </div>
-              ))}
+              ))} */}
+              {conversation
+            .filter((msg) => msg.content !== "Hello, I'm ready to start the interview.")
+            .map((msg, i) => (
+              <div key={i} className="msg-bubble" style={{ display: "flex", flexDirection: "column" }}>
+
+                {/* Message bubble row */}
+                <div style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                  {msg.role === "assistant" && (
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #a78bfa, #06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "10px", flexShrink: 0, marginTop: "4px" }}>
+                      <span style={{ fontSize: "14px" }}>🤖</span>
+                    </div>
+                  )}
+                  <div style={{
+                    maxWidth: "75%",
+                    padding: "14px 18px",
+                    borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                    background: msg.role === "user" ? "rgba(167,139,250,0.15)" : "rgba(10,7,24,0.7)",
+                    border: msg.role === "user" ? "1px solid rgba(167,139,250,0.25)" : "1px solid rgba(255,255,255,0.07)",
+                    fontSize: "14px",
+                    color: "#f1f5f9",
+                    lineHeight: "1.65",
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {msg.content}
+                  </div>
+                  {msg.role === "user" && (
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "10px", flexShrink: 0, marginTop: "4px" }}>
+                      <span style={{ fontSize: "14px" }}>👤</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* STAR Score — sirf user messages ke neeche */}
+                {msg.role === "user" && msg.isScoring && (
+                  <div style={{ alignSelf: "flex-start", marginLeft: "42px", marginTop: "8px", color: "#a78bfa", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <svg style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} fill="none" viewBox="0 0 24 24">
+                      <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Scoring your answer...
+                  </div>
+                )}
+                {msg.role === "user" && msg.score && (
+                  <div style={{ alignSelf: "flex-start", width: "80%", marginLeft: "42px", marginTop: "8px" }}>
+                    <StarScoreCard score={msg.score} />
+                  </div>
+                )}
+              </div>
+            ))}
 
             {/* Typing indicator */}
             {isTyping && (
@@ -648,5 +791,86 @@ export default function InterviewPage() {
     <Suspense fallback={<div style={{ minHeight: "100vh", background: "#04020d", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
       <InterviewContent />
     </Suspense>
+  );
+}
+function StarScoreCard({ score }: { score: StarScore }) {
+  const [showIdeal, setShowIdeal] = useState(false);
+
+  const verdictColor = {
+    Excellent: { bg: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", text: "#34d399" },
+    Good: { bg: "rgba(99,102,241,0.1)", border: "rgba(99,102,241,0.3)", text: "#a78bfa" },
+    Average: { bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)", text: "#fbbf24" },
+    "Needs Work": { bg: "rgba(239,68,68,0.1)", border: "rgba(239,68,68,0.3)", text: "#f87171" },
+  }[score.verdict];
+
+  const starKeys = ["situation", "task", "action", "result"] as const;
+  const starLabels = { situation: "S — Situation", task: "T — Task", action: "A — Action", result: "R — Result" };
+
+  return (
+    <div style={{ marginTop: "10px", background: "rgba(5,3,15,0.8)", border: `1px solid ${verdictColor.border}`, borderRadius: "14px", padding: "16px", fontSize: "13px" }}>
+      
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          ⭐ STAR Score
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ color: verdictColor.text, fontWeight: 700, fontSize: "11px", background: verdictColor.bg, padding: "3px 10px", borderRadius: "999px", border: `1px solid ${verdictColor.border}` }}>
+            {score.verdict}
+          </span>
+          <span style={{ fontSize: "22px", fontWeight: 800, color: verdictColor.text }}>
+            {score.total_score}<span style={{ fontSize: "13px", color: "rgba(255,255,255,0.3)" }}>/100</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Score bars */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "14px" }}>
+        {starKeys.map((key) => {
+          const item = score.breakdown[key];
+          const pct = (item.score / item.max) * 100;
+          const barColor = pct >= 80 ? "#34d399" : pct >= 60 ? "#a78bfa" : pct >= 40 ? "#fbbf24" : "#f87171";
+          return (
+            <div key={key}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>{starLabels[key]}</span>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: barColor }}>{item.score}/{item.max}</span>
+              </div>
+              <div style={{ height: "5px", background: "rgba(255,255,255,0.06)", borderRadius: "99px", overflow: "hidden", marginBottom: "4px" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: "99px", transition: "width 0.8s ease" }} />
+              </div>
+              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", margin: 0 }}>{item.feedback}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Weak areas */}
+      {score.weak_areas.length > 0 && (
+        <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "10px", padding: "10px 12px", marginBottom: "12px" }}>
+          <p style={{ fontSize: "11px", fontWeight: 700, color: "#fbbf24", marginBottom: "6px" }}>⚠ Improve karo:</p>
+          {score.weak_areas.map((area, i) => (
+            <p key={i} style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", margin: "2px 0" }}>• {area}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Ideal answer toggle */}
+      <button
+        onClick={() => setShowIdeal(!showIdeal)}
+        style={{ width: "100%", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "8px", padding: "8px", color: "#a78bfa", fontSize: "11px", fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
+        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(167,139,250,0.15)"}
+        onMouseLeave={(e) => e.currentTarget.style.background = "rgba(167,139,250,0.08)"}
+      >
+        {showIdeal ? "▲ Hide Ideal Answer" : "✦ Show Ideal Answer"}
+      </button>
+
+      {showIdeal && (
+        <div style={{ marginTop: "10px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "10px", padding: "12px" }}>
+          <p style={{ fontSize: "11px", fontWeight: 700, color: "#a78bfa", marginBottom: "8px" }}>💡 Ideal Answer:</p>
+          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: "1.7", margin: 0 }}>{score.ideal_answer}</p>
+        </div>
+      )}
+    </div>
   );
 }
