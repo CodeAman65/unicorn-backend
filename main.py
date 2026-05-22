@@ -744,6 +744,119 @@ Analyze this answer on all 6 dimensions."""
         print(f"Quality Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
+# ==========================================
+# VOICE INTERVIEW ENDPOINT
+# ==========================================
+import httpx
+import base64
+
+class VoiceInterviewRequest(BaseModel):
+    transcript: str        # User ne jo bola
+    job_role: str
+    interview_type: str = "behavioral"
+    conversation: list[Message] = []
+    resume_data: dict = {}
+    accent: str = "indian"  # indian / american / british
+
+@app.post("/api/voice-interview")
+async def voice_interview_endpoint(data: VoiceInterviewRequest):
+    if not data.transcript:
+        raise HTTPException(status_code=400, detail="Transcript required!")
+    try:
+        resume_context = ""
+        if data.resume_data:
+            resume_context = f"""
+Candidate Resume:
+- Name: {data.resume_data.get('name', 'Candidate')}
+- Skills: {', '.join(data.resume_data.get('skills', []))}
+- Experience: {str(data.resume_data.get('experience', []))}
+- Projects: {str(data.resume_data.get('projects', []))}
+"""
+        type_prompts = {
+            "behavioral": f"You are a senior HR interviewer for {data.job_role}. Ask ONE behavioral question using STAR method. Be warm, professional, conversational — like a real human interviewer. Keep responses under 3 sentences.",
+            "technical": f"You are a senior technical interviewer for {data.job_role}. Ask ONE technical question. Be precise. Follow up intelligently. Keep responses under 3 sentences.",
+            "system_design": f"You are a principal engineer interviewing for {data.job_role}. Give ONE system design problem. Guide them naturally. Keep responses under 4 sentences.",
+            "case_study": f"You are a business interviewer for {data.job_role}. Present ONE business case problem. Be analytical. Keep responses under 3 sentences.",
+            "product": f"You are a senior PM interviewer for {data.job_role}. Ask ONE product sense question. Keep responses under 3 sentences.",
+            "leadership": f"You are a VP-level interviewer for {data.job_role}. Ask ONE leadership question. Be senior and strategic. Keep responses under 3 sentences.",
+        }
+
+        system_prompt = f"""{type_prompts.get(data.interview_type, type_prompts['behavioral'])}
+{resume_context}
+CRITICAL: You are speaking OUT LOUD — not typing. Keep response conversational, natural, short. No bullet points. No markdown. Just natural speech."""
+
+        groq_messages = [{"role": "system", "content": system_prompt}]
+        for msg in data.conversation[-6:]:  # Last 6 messages only
+            groq_messages.append({
+                "role": "user" if msg.role == "user" else "assistant",
+                "content": msg.content
+            })
+        groq_messages.append({"role": "user", "content": data.transcript})
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=groq_messages,
+            max_tokens=200,
+            temperature=0.7
+        )
+
+        ai_text = response.choices[0].message.content
+        return {"reply": ai_text}
+
+    except Exception as e:
+        print(f"Voice Interview Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# TEXT TO SPEECH ENDPOINT
+# ==========================================
+class TTSRequest(BaseModel):
+    text: str
+    accent: str = "indian"  # indian / american / british / hindi
+
+@app.post("/api/tts")
+async def tts_endpoint(data: TTSRequest):
+    # ElevenLabs voice IDs
+    voice_map = {
+        "indian":   "TX3LPaxmHKxFdv7VOQHJ",  # Liam — neutral, works well for Indian accent
+        "american": "pNInz6obpgDQGcFmaJgB",   # Adam — American male
+        "british":  "ErXwobaYiN019PkySvjV",   # Antoni — British
+        "hindi":    "TX3LPaxmHKxFdv7VOQHJ",   # Same voice, Hindi text input
+    }
+
+    voice_id = voice_map.get(data.accent, voice_map["indian"])
+    api_key = os.environ.get("ELEVENLABS_API_KEY", "")
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+                headers={
+                    "xi-api-key": api_key,
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "text": data.text,
+                    "model_id": "eleven_multilingual_v2",
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.8,
+                        "style": 0.3,
+                        "use_speaker_boost": True
+                    }
+                }
+            )
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="TTS failed")
+
+        audio_b64 = base64.b64encode(response.content).decode("utf-8")
+        return {"audio_base64": audio_b64, "format": "mp3"}
+
+    except Exception as e:
+        print(f"TTS Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")

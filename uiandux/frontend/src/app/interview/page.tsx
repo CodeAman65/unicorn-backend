@@ -98,6 +98,17 @@ function InterviewContent() {
   const [activeTab, setActiveTab] = useState<"interview" | "prep">("interview");
   const [prepActiveSection, setPrepActiveSection] = useState("culture");  
   const [interviewType, setInterviewType] = useState("behavioral");
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [voiceAccent, setVoiceAccent] = useState("indian");
+  const [liveWPM, setLiveWPM] = useState(0);
+  const [fillerCount, setFillerCount] = useState(0);
+  const recognitionRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const wordCountRef = useRef<number>(0);
 
   const interviewTypes = [
   { id: "behavioral", label: "Behavioral HR", icon: "🧠", color: "#10b981", desc: "STAR method, soft skills, culture fit" },
@@ -276,6 +287,118 @@ function InterviewContent() {
     if (!userInput.trim() || isLoading) return;
     sendMessage(userInput);
   };
+
+  const FILLER_WORDS = ["um", "uh", "basically", "you know", "like", "so", "actually", "literally", "kind of", "sort of"];  const startListening = () => {
+
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Browser speech recognition not supported. Use Chrome.");
+    return;
+
+  }  const recognition = new SpeechRecognition();
+
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.lang = voiceAccent === "hindi" ? "hi-IN" : "en-IN";  startTimeRef.current = Date.now();
+
+
+  wordCountRef.current = 0;  recognition.onresult = (event: any) => {
+
+    let interim = "";
+
+    let final = "";    for (let i = event.resultIndex; i < event.results.length; i++) {
+
+      const text = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        final += text;
+        wordCountRef.current += text.trim().split(/\s+/).length;
+      } else {
+        interim += text;
+      }
+    }
+    const fullText = final || interim;
+
+
+    setTranscript(fullText);    // Live WPM
+
+    const elapsed = (Date.now() - startTimeRef.current) / 60000;
+
+    if (elapsed > 0) setLiveWPM(Math.round(wordCountRef.current / elapsed));    // Filler word count
+
+    const words = fullText.toLowerCase().split(/\s+/);
+    const fillers = words.filter(w => FILLER_WORDS.includes(w));
+    setFillerCount(fillers.length);
+
+  };  recognition.onend = () => setIsListening(false);
+
+  recognitionRef.current = recognition;
+  recognition.start();
+  setIsListening(true);
+  setTranscript("");
+
+};const stopListeningAndSend = async () => {
+
+  recognitionRef.current?.stop();
+
+  setIsListening(false);
+
+  if (!transcript.trim()) return;
+
+  setIsLoading(true);  try {
+
+    // 1. Get AI response
+    const response = await fetch("https://unicorn-backend-3.onrender.com/api/voice-interview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transcript,
+        job_role: jobRole,
+        interview_type: interviewType,
+        conversation: conversation.slice(-6),
+        resume_data: resumeData || {},
+        accent: voiceAccent,
+      }),
+    });
+    const data = await response.json();
+
+
+    const aiReply = data.reply;    // Update conversation
+
+    const userMsg: ScoredMessage = { role: "user", content: transcript };
+    const aiMsg: ScoredMessage = { role: "assistant", content: aiReply };
+    setConversation(prev => [...prev, userMsg, aiMsg]);
+
+    setTranscript("");    // 2. Get TTS audio
+
+    setIsSpeaking(true);
+    const ttsResponse = await fetch("https://unicorn-backend-3.onrender.com/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: aiReply, accent: voiceAccent }),
+
+    });    const ttsData = await ttsResponse.json();
+
+
+    const audioSrc = `data:audio/mp3;base64,${ttsData.audio_base64}`;    if (audioRef.current) {
+
+      audioRef.current.src = audioSrc;
+      audioRef.current.play();
+      audioRef.current.onended = () => setIsSpeaking(false);
+
+    }    // Score the answer
+
+    const lastAiQ = conversation.filter(m => m.role === "assistant").slice(-1)[0]?.content || "";
+    const userIdx = conversation.length;
+
+    scoreUserAnswer(transcript, lastAiQ, userIdx);  } catch (error) {
+
+    console.error("Voice error:", error);
+    setIsSpeaking(false);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const generatePrepPack = async () => {
   if (!companyInput.trim()) {
     alert("Company name likho pehle!");
@@ -617,7 +740,7 @@ function InterviewContent() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Input box */}
+          {/* Input box
           <div style={{ background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "16px", display: "flex", gap: "12px", alignItems: "flex-end" }}>
             <textarea
               value={userInput}
@@ -638,7 +761,107 @@ function InterviewContent() {
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
               </svg>
             </button>
-          </div>
+          </div> */}
+          {/* Voice / Text Mode Toggle */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginBottom: "12px" }}>
+              <button onClick={() => setIsVoiceMode(false)}
+                style={{ padding: "6px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, border: "1px solid", cursor: "pointer",
+                  background: !isVoiceMode ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.03)",
+                  borderColor: !isVoiceMode ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)",
+                  color: !isVoiceMode ? "#a78bfa" : "rgba(255,255,255,0.5)" }}>
+                ⌨️ Text
+              </button>
+              <button onClick={() => setIsVoiceMode(true)}
+                style={{ padding: "6px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, border: "1px solid", cursor: "pointer",
+                  background: isVoiceMode ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.03)",
+                  borderColor: isVoiceMode ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.08)",
+                  color: isVoiceMode ? "#34d399" : "rgba(255,255,255,0.5)" }}>
+                🎤 Voice
+              </button>
+            </div>
+                
+            {/* Accent selector */}
+            {isVoiceMode && (
+              <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "12px" }}>
+                {[
+                  { id: "indian", label: "🇮🇳 Indian" },
+                  { id: "american", label: "🇺🇸 American" },
+                  { id: "british", label: "🇬🇧 British" },
+                  { id: "hindi", label: "🔵 Hindi" },
+                ].map(a => (
+                  <button key={a.id} onClick={() => setVoiceAccent(a.id)}
+                    style={{ padding: "5px 12px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, border: "1px solid", cursor: "pointer",
+                      background: voiceAccent === a.id ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.02)",
+                      borderColor: voiceAccent === a.id ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)",
+                      color: voiceAccent === a.id ? "#06b6d4" : "rgba(255,255,255,0.4)" }}>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* VOICE MODE UI */}
+            {isVoiceMode ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", padding: "20px", background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px" }}>
+              
+                {/* Live metrics */}
+                <div style={{ display: "flex", gap: "20px", fontSize: "12px" }}>
+                  <span style={{ color: liveWPM > 160 ? "#f87171" : liveWPM > 0 ? "#34d399" : "rgba(255,255,255,0.3)" }}>
+                    ⚡ {liveWPM} WPM
+                  </span>
+                  <span style={{ color: fillerCount > 3 ? "#f87171" : fillerCount > 0 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}>
+                    🚫 {fillerCount} fillers
+                  </span>
+                  <span style={{ color: isSpeaking ? "#a78bfa" : "rgba(255,255,255,0.3)" }}>
+                    🔊 {isSpeaking ? "AI speaking..." : "Ready"}
+                  </span>
+                </div>
+            
+                {/* Mic button */}
+                <button
+                  onClick={isListening ? stopListeningAndSend : startListening}
+                  disabled={isSpeaking || isLoading}
+                  style={{
+                    width: "80px", height: "80px", borderRadius: "50%",
+                    background: isListening ? "rgba(239,68,68,0.2)" : "rgba(167,139,250,0.15)",
+                    border: `2px solid ${isListening ? "#ef4444" : "#a78bfa"}`,
+                    cursor: isSpeaking || isLoading ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "32px", transition: "all 0.2s",
+                    boxShadow: isListening ? "0 0 0 8px rgba(239,68,68,0.1)" : "none",
+                  }}>
+                  {isListening ? "⏹" : "🎤"}
+                </button>
+                
+                <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)", textAlign: "center" }}>
+                  {isListening ? "Bol raha hai... ruko phir stop karo" : isSpeaking ? "AI bol raha hai..." : "Mic dabao aur jawab do"}
+                </p>
+                
+                {/* Live transcript */}
+                {transcript && (
+                  <div style={{ width: "100%", background: "rgba(255,255,255,0.03)", borderRadius: "10px", padding: "12px", fontSize: "13px", color: "rgba(255,255,255,0.6)", lineHeight: "1.6", minHeight: "60px" }}>
+                    {transcript}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* TEXT INPUT — same as before */
+              <div style={{ background: "rgba(10,7,24,0.6)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "16px", display: "flex", gap: "12px", alignItems: "flex-end" }}>
+                <textarea value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={handleKeyDown}
+                  placeholder="Enter your answer here... (Enter to send, Shift+Enter for new line)"
+                  disabled={isLoading} rows={3}
+                  style={{ flex: 1, background: "transparent", border: "none", color: "#f1f5f9", fontSize: "14px", resize: "none", lineHeight: "1.6", outline: "none", fontFamily: "'Plus Jakarta Sans', sans-serif" }}/>
+                <button onClick={handleSubmit} disabled={isLoading || !userInput.trim()} className="send-btn"
+                  style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(167,139,250,0.8)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
+              </div>
+            )}
+            
+            {/* Hidden audio element */}
+            <audio ref={audioRef} style={{ display: "none" }} />
         </>
       )}
     </>
