@@ -400,29 +400,214 @@ function InterviewContent() {
 //     setIsLoading(false);
 //   }
 // };
-const startListening = () => {
+// const startListening = () => {
+//   const SpeechRecognition =
+//     (window as any).SpeechRecognition ||
+//     (window as any).webkitSpeechRecognition;
+
+//   if (!SpeechRecognition) {
+//     alert("Chrome browser use karo — Safari/Firefox mein Speech API nahi hoti.");
+//     return;
+//   }
+
+//   const recognition = new SpeechRecognition();
+//   recognition.continuous = true;      // ← continuous OFF — mobile ke liye
+//   recognition.interimResults = true;
+//   recognition.lang = voiceAccent === "hindi" ? "hi-IN" : "en-US";
+
+//   startTimeRef.current = Date.now();
+//   wordCountRef.current = 0;
+//   const accumulatedRef = { value: "" };
+
+//   recognition.onstart = () => {
+//     setIsListening(true);
+//     setTranscript("");
+//     accumulatedRef.value = "";
+//   };
+
+//   recognition.onresult = (event: any) => {
+//     let interim = "";
+//     for (let i = event.resultIndex; i < event.results.length; i++) {
+//       const text = event.results[i][0].transcript;
+//       if (event.results[i].isFinal) {
+//         accumulatedRef.value += text + " ";
+//         wordCountRef.current += text.trim().split(/\s+/).length;
+//       } else {
+//         interim += text;
+//       }
+//     }
+
+//     const display = accumulatedRef.value + interim;
+//     setTranscript(display);
+
+//     // Live WPM
+//     const elapsed = (Date.now() - startTimeRef.current) / 60000;
+//     if (elapsed > 0) setLiveWPM(Math.round(wordCountRef.current / elapsed));
+
+//     // Filler words
+//     const words = display.toLowerCase().split(/\s+/);
+//     const fillers = words.filter(w => FILLER_WORDS.includes(w));
+//     setFillerCount(fillers.length);
+//   };
+
+//   recognition.onerror = (event: any) => {
+//     console.error("Speech error:", event.error);
+//     setIsListening(false);
+//     if (event.error === "not-allowed") {
+//       alert("Microphone permission do! Browser settings mein jaao → Microphone → Allow");
+//     }
+//   };
+
+//   // ← YAHI KEY FIX HAI — onend pe automatically submit
+//   recognition.onend = () => {
+//     setIsListening(false);
+//     if (accumulatedRef.value.trim().length > 3) {
+//       // Auto submit when recording stops
+//       submitVoiceAnswer(accumulatedRef.value.trim());
+//     }
+//   };
+
+//   recognitionRef.current = recognition;
+
+//   // recognition.start();
+//     try {
+//     recognition.start();
+//   } catch (err) {
+//     console.error("Recognition start failed:", err);
+//     alert("Mic start nahi hua. Page reload karo aur dobara try karo.");
+//   }
+// };
+
+// // ← ALAG FUNCTION — submit logic yahan
+// const submitVoiceAnswer = async (text: string) => {
+//   if (!text.trim() || isLoading) return;
+
+//   setIsLoading(true);
+//   setTranscript(text);
+
+//   try {
+//     const response = await fetch(
+//       "https://unicorn-backend-3.onrender.com/api/voice-interview",
+//       {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({
+//           transcript: text,
+//           job_role: jobRole,
+//           interview_type: interviewType,
+//           conversation: conversation.slice(-6),
+//           resume_data: resumeData || {},
+//           accent: voiceAccent,
+//         }),
+//       }
+//     );
+
+//     if (!response.ok) throw new Error("Backend error");
+//     const data = await response.json();
+//     const aiReply = data.reply;
+
+//     const userMsg: ScoredMessage = { role: "user", content: text };
+//     const aiMsg: ScoredMessage = { role: "assistant", content: aiReply };
+//     setConversation(prev => [...prev, userMsg, aiMsg]);
+//     setTranscript("");
+
+//     // TTS
+//     setIsSpeaking(true);
+//     const ttsResponse = await fetch(
+//       "https://unicorn-backend-3.onrender.com/api/tts",
+//       {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ text: aiReply, accent: voiceAccent }),
+//       }
+//     );
+
+//     if (ttsResponse.ok) {
+//       const ttsData = await ttsResponse.json();
+//       const audioSrc = `data:audio/mp3;base64,${ttsData.audio_base64}`;
+//       if (audioRef.current) {
+//         audioRef.current.src = audioSrc;
+//         audioRef.current.play();
+//         audioRef.current.onended = () => {
+//           setIsSpeaking(false);
+//         };
+//       }
+//     } else {
+//       setIsSpeaking(false);
+//     }
+
+//     // Score answer
+//     const lastAiQ = conversation
+//       .filter(m => m.role === "assistant")
+//       .slice(-1)[0]?.content || "";
+//     const userIdx = conversation.length;
+//     scoreUserAnswer(text, lastAiQ, userIdx);
+
+//   } catch (error) {
+//     console.error("Voice submit error:", error);
+//     setIsSpeaking(false);
+//   } finally {
+//     setIsLoading(false);
+//   }
+// };
+
+// // ← Button click handler — simple toggle
+// // const handleMicClick = () => {
+// //   if (isListening) {
+// //     // Manual stop → onend automatically calls submitVoiceAnswer
+// //     recognitionRef.current?.stop();
+// //   } else {
+// //     startListening();
+// //   }
+// // };
+//   const handleMicClick = () => {
+//     // ← Check karo mic actually available hai
+//     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+//       alert("Yeh browser mic support nahi karta.");
+//       return;
+//     }
+  
+//     // ← Explicit permission request — bina iske Chrome block karta hai
+//     navigator.mediaDevices.getUserMedia({ audio: true })
+//       .then(() => {
+//         if (isListening) {
+//           recognitionRef.current?.stop();
+//         } else {
+//           startListening();
+//         }
+//       })
+//       .catch((err) => {
+//         alert("Mic permission denied: " + err.message);
+//       });
+//   };
+  const startListening = () => {
   const SpeechRecognition =
     (window as any).SpeechRecognition ||
     (window as any).webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    alert("Chrome browser use karo — Safari/Firefox mein Speech API nahi hoti.");
+    alert("Chrome browser use karo — Speech API sirf Chrome mein kaam karta hai.");
     return;
   }
 
+  // Reset metrics
+  setTranscript("");
+  setLiveWPM(0);
+  setFillerCount(0);
+  startTimeRef.current = Date.now();
+  wordCountRef.current = 0;
+
   const recognition = new SpeechRecognition();
-  recognition.continuous = true;      // ← continuous OFF — mobile ke liye
+  recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = voiceAccent === "hindi" ? "hi-IN" : "en-US";
 
-  startTimeRef.current = Date.now();
-  wordCountRef.current = 0;
-  const accumulatedRef = { value: "" };
+  // Ref to store accumulated text — outside React state so onend can access it
+  let accumulated = "";
 
   recognition.onstart = () => {
     setIsListening(true);
-    setTranscript("");
-    accumulatedRef.value = "";
+    accumulated = "";
   };
 
   recognition.onresult = (event: any) => {
@@ -430,57 +615,50 @@ const startListening = () => {
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const text = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
-        accumulatedRef.value += text + " ";
+        accumulated += text + " ";
         wordCountRef.current += text.trim().split(/\s+/).length;
       } else {
         interim += text;
       }
     }
 
-    const display = accumulatedRef.value + interim;
+    const display = accumulated + interim;
     setTranscript(display);
 
-    // Live WPM
     const elapsed = (Date.now() - startTimeRef.current) / 60000;
     if (elapsed > 0) setLiveWPM(Math.round(wordCountRef.current / elapsed));
 
-    // Filler words
     const words = display.toLowerCase().split(/\s+/);
-    const fillers = words.filter(w => FILLER_WORDS.includes(w));
-    setFillerCount(fillers.length);
+    setFillerCount(words.filter(w => FILLER_WORDS.includes(w)).length);
   };
 
   recognition.onerror = (event: any) => {
     console.error("Speech error:", event.error);
     setIsListening(false);
     if (event.error === "not-allowed") {
-      alert("Microphone permission do! Browser settings mein jaao → Microphone → Allow");
+      alert("Microphone permission do! Browser mein URL bar ke paas lock icon → Microphone → Allow");
     }
   };
 
-  // ← YAHI KEY FIX HAI — onend pe automatically submit
   recognition.onend = () => {
     setIsListening(false);
-    if (accumulatedRef.value.trim().length > 3) {
-      // Auto submit when recording stops
-      submitVoiceAnswer(accumulatedRef.value.trim());
+    const finalText = accumulated.trim();
+    if (finalText.length > 3) {
+      submitVoiceAnswer(finalText);
     }
   };
 
   recognitionRef.current = recognition;
 
-  // recognition.start();
-    try {
+  try {
     recognition.start();
   } catch (err) {
     console.error("Recognition start failed:", err);
-    alert("Mic start nahi hua. Page reload karo aur dobara try karo.");
   }
 };
 
-// ← ALAG FUNCTION — submit logic yahan
 const submitVoiceAnswer = async (text: string) => {
-  if (!text.trim() || isLoading) return;
+  if (!text.trim()) return;
 
   setIsLoading(true);
   setTranscript(text);
@@ -527,21 +705,18 @@ const submitVoiceAnswer = async (text: string) => {
       const audioSrc = `data:audio/mp3;base64,${ttsData.audio_base64}`;
       if (audioRef.current) {
         audioRef.current.src = audioSrc;
-        audioRef.current.play();
-        audioRef.current.onended = () => {
-          setIsSpeaking(false);
-        };
+        audioRef.current.onended = () => setIsSpeaking(false);
+        audioRef.current.play().catch(() => setIsSpeaking(false));
       }
     } else {
       setIsSpeaking(false);
     }
 
-    // Score answer
+    // Score
     const lastAiQ = conversation
       .filter(m => m.role === "assistant")
       .slice(-1)[0]?.content || "";
-    const userIdx = conversation.length;
-    scoreUserAnswer(text, lastAiQ, userIdx);
+    scoreUserAnswer(text, lastAiQ, conversation.length);
 
   } catch (error) {
     console.error("Voice submit error:", error);
@@ -551,35 +726,14 @@ const submitVoiceAnswer = async (text: string) => {
   }
 };
 
-// ← Button click handler — simple toggle
-// const handleMicClick = () => {
-//   if (isListening) {
-//     // Manual stop → onend automatically calls submitVoiceAnswer
-//     recognitionRef.current?.stop();
-//   } else {
-//     startListening();
-//   }
-// };
-  const handleMicClick = () => {
-    // ← Check karo mic actually available hai
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("Yeh browser mic support nahi karta.");
-      return;
-    }
-  
-    // ← Explicit permission request — bina iske Chrome block karta hai
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(() => {
-        if (isListening) {
-          recognitionRef.current?.stop();
-        } else {
-          startListening();
-        }
-      })
-      .catch((err) => {
-        alert("Mic permission denied: " + err.message);
-      });
-  };
+const handleMicClick = () => {
+  if (isListening) {
+    // Manual stop — onend will fire automatically and call submitVoiceAnswer
+    recognitionRef.current?.stop();
+  } else {
+    startListening();
+  }
+};
   const generatePrepPack = async () => {
   if (!companyInput.trim()) {
     alert("Company name likho pehle!");
