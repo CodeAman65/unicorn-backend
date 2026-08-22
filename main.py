@@ -28,9 +28,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# groq_api_key = os.getenv("GROQ_API_KEY")
+# groq_api_key = "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"    # Naya Groq key yahan
+# os.environ["GROQ_API_KEY"] = groq_api_key
 groq_api_key = os.getenv("GROQ_API_KEY")
-groq_api_key = "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"    # Naya Groq key yahan
-os.environ["GROQ_API_KEY"] = groq_api_key
+
+if not groq_api_key:
+    raise ValueError("GROQ_API_KEY environment variable not set!")
 
 groq_llm = LLM(
     model="groq/llama-3.3-70b-versatile",
