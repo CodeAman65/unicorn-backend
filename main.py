@@ -37,7 +37,7 @@ if not groq_api_key:
     raise ValueError("GROQ_API_KEY environment variable not set!")
 
 groq_llm = LLM(
-    model="groq/llama-3.3-70b-versatile",
+    model="groq/llama-3.1-70b-versatile",
     api_key=groq_api_key
 )
 # Groq client — interview + edit ke liye
