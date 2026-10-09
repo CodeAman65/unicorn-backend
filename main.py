@@ -37,7 +37,7 @@ if not groq_api_key:
     raise ValueError("GROQ_API_KEY environment variable not set!")
 
 groq_llm = LLM(
-    model="groq/llama-3.3-70b-versatile",
+    model="groq/openai/gpt-oss-120b",
     api_key=groq_api_key
 )
 # Groq client — interview + edit ke liye
@@ -324,7 +324,7 @@ async def edit_resume_endpoint(data: EditResumeRequest):
         ]
 
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=groq_messages,
             max_tokens=4000,
             # temperature=0.3
@@ -465,7 +465,7 @@ Rules:
             })
 
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=groq_messages,
             max_tokens=1000,
             temperature=0.7
@@ -553,7 +553,7 @@ Return EXACTLY this JSON structure:
 Make it extremely specific to {data.company}. Include real interview patterns, actual question types they ask, and insider tips. Make technical_questions have 5 questions and behavioral_questions have 4 questions."""
 
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -632,7 +632,7 @@ Score this answer on STAR framework and provide detailed feedback."""
         ]
 
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=groq_messages,
             max_tokens=1500,
             temperature=0.3
@@ -729,7 +729,7 @@ Analyze this answer on all 6 dimensions."""
         ]
 
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=groq_messages,
             max_tokens=1500,
             temperature=0.2
@@ -798,7 +798,7 @@ CRITICAL: You are speaking OUT LOUD — not typing. Keep response conversational
         groq_messages.append({"role": "user", "content": data.transcript})
 
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=groq_messages,
             max_tokens=200,
             temperature=0.7
