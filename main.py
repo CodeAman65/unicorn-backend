@@ -37,7 +37,7 @@ if not groq_api_key:
     raise ValueError("GROQ_API_KEY environment variable not set!")
 
 groq_llm = LLM(
-    model="groq/llama-3.1-70b-versatile",
+    model="groq/llama-3.3-70b-versatile",
     api_key=groq_api_key
 )
 # Groq client — interview + edit ke liye
@@ -863,5 +863,5 @@ async def tts_endpoint(data: TTSRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    print("\n🚀 Starting FastAPI server on http://127.0.0.1:8000")
+    print("\nStarting FastAPI server on http://127.0.0.1:8000")
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
